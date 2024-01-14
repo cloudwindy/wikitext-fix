@@ -67,8 +67,7 @@ int main(int ac, char *av[])
     Fixes::space(str);
 
   bytes = converter.to_bytes(str);
-  WikitextParser::print(bytes);
-  // cout << bytes << endl;
+  cout << bytes << endl;
 
   curl_global_cleanup();
 }
