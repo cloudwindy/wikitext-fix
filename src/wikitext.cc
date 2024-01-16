@@ -1,189 +1,208 @@
-#include <vector>
 #include <iostream>
+
 #include "wikitext.hh"
 #include "utf-32.hh"
 
-using std::vector, std::string;
-#define MATCH_BEGIN(target, pattern, token) \
-  if (target.starts_with(pattern))          \
-  {                                         \
-    target.erase(0, sizeof(pattern) - 1);   \
-    return token;                           \
-  }
-#define NEXT(target, pattern, token) MATCH_BEGIN(target, pattern, token)
-#define MATCH_END(token) return token
+using std::string;
+using ustring = std::u32string;
+using namespace WikiParser;
+string html_encode(string data);
 
-namespace WikitextParser
+namespace Wiki
 {
-  void print(string wt)
+  Wikitext::Wikitext(UBlocks ublocks)
   {
-    Parser parser(wt);
-    std::cout << "Parser started" << std::endl;
-    parser.parse();
-    std::cout << "Parsed block count=" << parser.blocks.size() << std::endl;
-    for (auto block : parser.blocks)
+    blocks.reserve(ublocks.size());
+    for (const auto &ublock : ublocks)
     {
-      if (block.type == LINK)
-        std::cout << block.value << std::endl;
+      if (!ublock.prepend.empty())
+        blocks.push_back({.type = WikiParser::TEXT,
+                          .value = converter.to_bytes(ublock.prepend)});
+
+      blocks.push_back({.type = ublock.type,
+                        .value = converter.to_bytes(ublock.value)});
+
+      if (!ublock.append.empty())
+        blocks.push_back({.type = WikiParser::TEXT,
+                          .value = converter.to_bytes(ublock.append)});
     }
   }
-  Parser::Parser(string wt)
+  Wikitext::Wikitext(string wikitext)
   {
-    this->wt = wt;
+    Parser parser(wikitext);
+    parser.parse();
+    blocks = parser.get_blocks();
   }
-  void Parser::parse()
+  UBlocks Wikitext::decode()
   {
-    string text;
-    struct state
+    UBlocks ublocks;
+    ublocks.reserve(blocks.size());
+    for (const auto &block : blocks)
     {
-      bool in_template : 1;
-      bool in_table : 1;
-      bool in_comment : 1;
-      bool in_link : 1;
-      bool in_ext_link : 1;
-    };
-    state s;
-    while (!wt.empty())
+      ublocks.push_back({.type = block.type,
+                         .value = converter.from_bytes(block.value)});
+    }
+    return ublocks;
+  }
+  string Wikitext::to_string() const
+  {
+    string buf;
+    for (const auto &block : blocks)
     {
-      bool literal = s.in_template || s.in_table || s.in_comment || s.in_link || s.in_ext_link;
-      Token t = next();
-      switch (t)
+      string begin;
+      string end;
+      switch (block.type)
       {
-      case CHAR:
-        text.push_back(wt[0]);
-        wt.erase(0, 1);
+      case TEMPLATE:
+        begin = "{{";
+        end = "}}";
         break;
-      case TEMPLATE_BEGIN:
-        if (literal)
-        {
-          text += "{{";
-          break;
-        }
-        s.in_template = true;
-        push_text(text);
-        text.clear();
+      case TABLE:
+        begin = "{|";
+        end = "|}";
         break;
-      case TEMPLATE_END:
-        if (!s.in_template)
-        {
-          text += "}}";
-          break;
-        }
-        s.in_template = false;
-        push(TEMPLATE, text);
-        text.clear();
+      case LINK:
+        begin = "[[";
+        end = "]]";
         break;
-      case TABLE_BEGIN:
-        if (literal)
-        {
-          text += "{|";
-          break;
-        }
-        s.in_table = true;
-        push_text(text);
-        text.clear();
+      case EXT_LINK:
+        begin = "[";
+        end = "]";
         break;
-      case TABLE_END:
-        if (!s.in_table)
-        {
-          text += "|}";
-          break;
-        }
-        s.in_table = false;
-        push(TABLE, text);
-        text.clear();
+      case COMMENT:
+        begin = "<!--";
+        end = "-->";
         break;
-      case LINK_BEGIN:
-        if (literal)
-        {
-          text += "[[";
-          break;
-        }
-        s.in_link = true;
-        push_text(text);
-        text.clear();
+      case CONV_TAG:
+        begin = "-{";
+        end = "}-";
         break;
-      case LINK_END:
-        if (!s.in_link)
-        {
-          text += "]]";
-          break;
-        }
-        s.in_link = false;
-        push(LINK, text);
-        text.clear();
+      case HTML_TAG:
+        begin = "<";
+        end = ">";
         break;
-      case EXT_LINK_BEGIN:
-        if (literal)
-        {
-          text += "[";
-          break;
-        }
-        s.in_ext_link = true;
-        push_text(text);
-        text.clear();
+      case HTML_SELF_CLOSING_TAG:
+        begin = "<";
+        end = "/>";
         break;
-      case EXT_LINK_END:
-        if (!s.in_ext_link)
-        {
-          text += "]";
-          break;
-        }
-        s.in_ext_link = false;
-        push(EXT_LINK, text);
-        text.clear();
-        break;
-      case COMMENT_BEGIN:
-        if (literal)
-        {
-          text += "<!--";
-          break;
-        }
-        s.in_comment = true;
-        push_text(text);
-        text.clear();
-        break;
-      case COMMENT_END:
-        if (!s.in_comment)
-        {
-          text += "-->";
-          break;
-        }
-        s.in_comment = false;
-        push(COMMENT, text);
-        text.clear();
+      case HTML_CLOSE_TAG:
+        begin = "</";
+        end = ">";
         break;
       }
+      buf += begin + block.value + end;
     }
-    push_text(text);
+    return buf;
   }
-  void Parser::push(BlockType type, string value)
+  string Wikitext::color_html() const
   {
-    blocks.push_back({.type = type, .value = value});
-  }
-  void Parser::push_text(string text)
-  {
-    if (!text.empty())
+    string buf;
+    for (const auto &block : blocks)
     {
-      blocks.push_back({.type = TEXT, .value = text});
+      string begin;
+      string end;
+      switch (block.type)
+      {
+      case TEMPLATE:
+        begin = "<span class=\"tpl\">{{";
+        end = "}}</span>";
+        break;
+      case TABLE:
+        begin = "<span class=\"tab\">{|";
+        end = "|}</span>";
+        break;
+      case LINK:
+        begin = "<span class=\"ln\">[[";
+        end = "]]</span>";
+        break;
+      case EXT_LINK:
+        begin = "<span class=\"eln\">[";
+        end = "]</span>";
+        break;
+      case COMMENT:
+        begin = "<span class=\"cm\">&lt;!--";
+        end = "--&gt;</span>";
+        break;
+      case CONV_TAG:
+        begin = "<span class=\"co\">-{";
+        end = "}-</span>";
+        break;
+      case HTML_TAG:
+        begin = "<span class=\"tag\">&lt;";
+        end = "></span>";
+        break;
+      case HTML_SELF_CLOSING_TAG:
+        begin = "<span class=\"tag\">&lt;";
+        end = "/&gt;</span>";
+        break;
+      case HTML_CLOSE_TAG:
+        begin = "<span class=\"tag\">&lt;/";
+        end = "&gt;</span>";
+        break;
+      case HTML_BODY:
+        begin = "<span class=\"body\">";
+        end = "</span>";
+        break;
+      }
+      buf += begin + html_encode(block.value) + end;
+    }
+    const static string css = R"(
+    body {
+      white-space: pre-wrap;
+      font-family: Noto Sans Mono CJK, monospace;
+    }
+    .tpl {
+      background-color: #a1907d;
+    }
+    .ln {
+      color: #0070E0;
+    }
+    .tag {
+      color: #36528D;
+    }
+    .body {
+      background-color: #dbe7ff;
+    }
+    )";
+    return "<!DOCTYPE html><html lang=\"zh-cn\"><body>" + buf + "<style>" + css + "</style></body></html>";
+  }
+  size_t Wikitext::size()
+  {
+    return blocks.size();
+  }
+  std::ostream &operator<<(std::ostream &os, const Wikitext &wikitext)
+  {
+    return (os << wikitext.to_string());
+  }
+};
+
+string html_encode(string data)
+{
+  string buffer;
+  buffer.reserve(data.size());
+  for (size_t pos = 0; pos != data.size(); ++pos)
+  {
+    switch (data[pos])
+    {
+    case '&':
+      buffer.append("&amp;");
+      break;
+    case '\"':
+      buffer.append("&quot;");
+      break;
+    case '\'':
+      buffer.append("&apos;");
+      break;
+    case '<':
+      buffer.append("&lt;");
+      break;
+    case '>':
+      buffer.append("&gt;");
+      break;
+    default:
+      buffer.append(&data[pos], 1);
+      break;
     }
   }
-  Token Parser::next()
-  {
-    MATCH_BEGIN(wt, "{{", TEMPLATE_BEGIN);
-    NEXT(wt, "}}", TEMPLATE_END);
-    NEXT(wt, "{|", TABLE_BEGIN);
-    NEXT(wt, "|}", TABLE_END);
-    NEXT(wt, "[[", LINK_BEGIN);
-    NEXT(wt, "]]", LINK_END);
-    NEXT(wt, "[", EXT_LINK_BEGIN);
-    NEXT(wt, "]", EXT_LINK_END);
-    NEXT(wt, "<!--", COMMENT_BEGIN);
-    NEXT(wt, "-->", COMMENT_END);
-    NEXT(wt, "<", HTML_TAG_BEGIN);
-    NEXT(wt, ">", HTML_TAG_END);
-    NEXT(wt, "</", HTML_CLOSE_TAG_BEGIN);
-    NEXT(wt, "/>", HTML_CLOSE_TAG_END);
-    MATCH_END(CHAR);
-  }
+  return buffer;
 }

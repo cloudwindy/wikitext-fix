@@ -2,9 +2,11 @@
 
 #include <string>
 
+#include "wikitext.hh"
+
 namespace Fixes
 {
-  void footnotes(std::u32string &str);
-  void punctuation(std::u32string &str);
-  void space(std::u32string &str);
+  void footnotes(Wiki::UBlocks &str, int &fix_count);
+  void punctuation(Wiki::UBlocks &str, int &fix_count);
+  void space(Wiki::UBlocks &str, int &fix_count);
 }

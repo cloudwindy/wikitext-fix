@@ -56,6 +56,16 @@
     "__node_handle": "cpp",
     "bitset": "cpp",
     "deque": "cpp",
-    "__memory": "cpp"
-  }
+    "__memory": "cpp",
+    "span": "cpp",
+    "__split_buffer": "cpp",
+    "list": "cpp",
+    "map": "cpp",
+    "queue": "cpp",
+    "set": "cpp",
+    "stack": "cpp",
+    "*.ipp": "cpp",
+    "ios": "cpp",
+    "sstream": "cpp"
+  },
 }

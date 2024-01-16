@@ -19,28 +19,58 @@ int main(int ac, char *av[])
   curl_version_info_data *curl_ver = curl_version_info(CURLVERSION_NOW);
   cerr << "libcurl version " << curl_ver->version << endl;
 
-  po::options_description desc("Options");
-  auto opt = desc.add_options();
+  po::options_description desc_visible("Options");
+  auto opt = desc_visible.add_options();
   opt("help", "show help message");
-  opt("page-name", "page name (defaults to first positional arg)");
+  opt("render", "output parser rendered html instead of wikitext");
   opt("fix-note", "fix footnotes location");
-  opt("fix-punc", "fix punctuation");
-  opt("fix-space", "fix spaces between Chinese and English");
+  opt("fix-punc", "remove duplicate punctuation");
+  opt("fix-space", "remove spaces between Chinese and English");
+
+  po::options_description desc_hidden("Hidden Options");
+  desc_hidden.add_options()("page-name", "page name");
+
+  po::options_description desc;
+  desc.add(desc_visible).add(desc_hidden);
 
   po::positional_options_description pos_desc;
   pos_desc.add("page-name", -1);
 
   po::variables_map vm;
-  auto parsed = po::command_line_parser(ac, av)
-                    .options(desc)
-                    .positional(pos_desc)
-                    .run();
-  po::store(parsed, vm);
-  po::notify(vm);
+  try
+  {
+    // Only parse the options, so we can catch the explicit `--files`
+    auto parsed = po::command_line_parser(ac, av)
+                      .options(desc)
+                      .positional(pos_desc)
+                      .run();
+
+    // Make sure there were no non-positional `files` options
+    for (auto const &opt : parsed.options)
+    {
+      if ((opt.position_key == -1) && (opt.string_key == "page-name"))
+      {
+        throw po::unknown_option("page-name");
+      }
+    }
+
+    po::store(parsed, vm);
+    po::notify(vm);
+  }
+  catch (const po::error &e)
+  {
+    cerr << "Couldn't parse command line arguments properly:\n";
+    cerr << e.what() << '\n'
+         << '\n';
+    cerr << "Usage: " << av[0] << " [options] <page-name> [options]\n";
+    cerr << desc_visible << endl;
+    return 1;
+  }
 
   if (vm.count("help"))
   {
-    cout << desc << "\n";
+    cerr << "Usage: " << av[0] << " [options] <page-name> [options]\n";
+    cout << desc_visible << "\n";
     return 1;
   }
 
@@ -51,23 +81,47 @@ int main(int ac, char *av[])
   }
   if (page_name.empty())
   {
-    cerr << "page name not specified" << endl;
+    cerr << "Run " << av[0] << " --help for help." << endl;
     return 1;
   }
+  cerr << "Fetching " << page_name << "..." << endl;
   string bytes = Wikipedia::page_wikitext(page_name);
-  ustring str = converter.from_bytes(bytes);
+  if (bytes.starts_with("#REDIRECT"))
+  {
+    page_name = bytes.substr(bytes.find("[[") + 2);
+    page_name = page_name.substr(0, page_name.rfind("]]"));
+    cerr << "Redirecting to " << page_name << "..." << endl;
+    bytes = Wikipedia::page_wikitext(page_name);
+  }
+  cerr << "Parsing..." << endl;
+  Wiki::Wikitext wikitext(bytes);
+  Wiki::UBlocks ublocks = wikitext.decode();
+  cerr << "Fixing... (" << wikitext.size() << " blocks)" << endl;
+
+  int fix_count = 0;
 
   if (vm.count("fix-note"))
-    Fixes::footnotes(str);
+    Fixes::footnotes(ublocks, fix_count);
 
   if (vm.count("fix-punc"))
-    Fixes::punctuation(str);
+    Fixes::punctuation(ublocks, fix_count);
 
   if (vm.count("fix-space"))
-    Fixes::space(str);
+    Fixes::space(ublocks, fix_count);
 
-  bytes = converter.to_bytes(str);
-  cout << bytes << endl;
+  if (!fix_count)
+    cerr << "No need to fix." << endl;
+  else if (fix_count == 1)
+    cerr << "1 fix applied." << endl;
+  else if (fix_count > 1)
+    cerr << fix_count << " fixes applied." << endl;
+
+  wikitext = Wiki::Wikitext(ublocks);
+
+  if (vm.count("render"))
+    cout << wikitext.color_html() << endl;
+  else
+    cout << wikitext << endl;
 
   curl_global_cleanup();
 }

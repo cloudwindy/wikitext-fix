@@ -1,4 +1,6 @@
+#include <set>
 #include <iostream>
+#include <algorithm>
 
 #include "utf-32.hh"
 #include "fixes.hh"
@@ -7,68 +9,94 @@ using std::cout, std::cerr, std::endl;
 using std::string;
 using ustring = std::u32string;
 
+const ustring puncs = U"，。、“”【】！？『』〖〗：；「」・｜（）";
+const ustring puncs_single = U"，。、！？";
+const std::set<ustring> stop_markers{
+    U"\n",
+    U"”",
+    U"」",
+    U"』",
+};
+
 namespace Fixes
 {
-  void footnotes(ustring &str)
+  void footnotes(Wiki::UBlocks &blocks, int &fix_count)
   {
-    size_t pos = 0;
-    while (true)
+    for (auto it = blocks.begin(); it != std::prev(blocks.end()); it++)
     {
-      pos = str.find(U"。<ref", pos);
-      if (pos == string::npos)
+      Wiki::UBlock &block = *it;
+      const size_t block_i = std::distance(blocks.begin(), it);
+
+      const size_t punc_i = puncs_single.find(block.value.back());
+
+      if (block.type != WikiParser::TEXT || punc_i == string::npos)
+        continue;
+
+      Wiki::UBlock &next_block = *(&block + 1);
+      if (next_block.type != WikiParser::HTML_TAG || !next_block.value.starts_with(U"ref"))
+        continue;
+
+      const auto next_text_it = std::find_if(it + 1, blocks.end(), [](Wiki::UBlock &block)
+                                             { return block.type == WikiParser::TEXT || block.type == WikiParser::LINK; });
+      // We're on last text block.
+      if (next_text_it == blocks.end())
         break;
 
-      size_t pos_a = str.find(U"</ref>", pos);
-      size_t pos_b = str.find(U"/>", pos);
-      size_t pos_line = str.find(U"\n", pos);
-      if (pos_a + 6 == pos_line || pos_b + 2 == pos_line)
+      Wiki::UBlock &next_text_block = *next_text_it;
+      const size_t next_text_block_i = std::distance(blocks.begin(), next_text_it);
+
+      // Find stop marker.
+      const auto next_stop_it = std::find_if(stop_markers.begin(), stop_markers.end(), [&block = next_text_block](ustring stop)
+                                             { return block.value.starts_with(stop); });
+      if (next_stop_it != stop_markers.end())
+        continue;
+
+      // Remove period.
+      block.value.pop_back();
+      fix_count++;
+
+      const char32_t punc_ch = puncs_single.at(punc_i);
+
+      if (puncs_single.find(next_text_block.value.front()) != string::npos)
       {
-        pos++;
+        cerr << "Remove '" << converter.to_bytes(punc_ch) << "' in block " << block_i << "." << endl;
         continue;
       }
-      str.erase(pos, 1);
-
-      size_t pos_new;
-      if (pos_a > pos_b)
-        pos_new = pos_b + 2 - 1;
-      else if (pos_a < pos_b)
-        pos_new = pos_a + 6 - 1;
-      else if (pos_a == string::npos)
-        break;
-
-      if (str[pos_new] == U'。')
-      {
-        cerr << "Removal of '。' in " << pos << endl;
-        continue;
-      }
-      str.insert(pos_new, U"。");
-      cerr << "Shift of '。' from " << pos << " to " << pos_new << endl;
+      next_text_block.prepend = punc_ch;
+      cerr << "Shift '" << converter.to_bytes(punc_ch)
+           << "' from block " << block_i << " to " << next_text_block_i << "." << endl;
     }
   }
 
-  void punctuation(ustring &str)
+  void punctuation(Wiki::UBlocks &blocks, int &fix_count)
   {
-    const static ustring puncs = U"，。、“”【】！？『』〖〗：；「」・｜（）";
     int flag;
-    for (auto it = str.begin(); it != str.end();)
+    for (auto it = blocks.begin(); it != blocks.end(); it++)
     {
-      size_t i = it - str.begin();
-      int flag_new = puncs.find(str[i]);
-      if (flag_new != string::npos && flag == flag_new)
+      Wiki::UBlock &block = *it;
+      size_t block_i = std::distance(blocks.begin(), it);
+
+      if (block.type != WikiParser::TEXT || block.type != WikiParser::LINK)
+        continue;
+
+      ustring &str = block.value;
+      for (const auto &c : str)
       {
-        str.erase(i, 1);
-        cerr << "Removal of '" << converter.to_bytes(puncs[flag]) << "' in " << i << endl;
-      }
-      else
-      {
+        size_t pos = &str.front() - &c;
+        int flag_new = puncs.find(c);
+        if (flag != string::npos && flag == flag_new)
+        {
+          str.erase(pos, 1);
+          fix_count++;
+          cerr << "Remove '" << converter.to_bytes(puncs[flag])
+               << "' in block " << block_i << " pos " << pos << "." << endl;
+        }
         flag = flag_new;
-        it++;
       }
     }
   }
 
-  void space(ustring &str)
+  void space(Wiki::UBlocks &blocks, int &fix_count)
   {
-    
   }
 }

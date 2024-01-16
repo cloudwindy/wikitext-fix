@@ -43,7 +43,7 @@ namespace Wikipedia
         "maxlag=5",
         "format=json",
         "formatversion=2"};
-    for (auto &query : queries)
+    for (const auto &query : queries)
     {
       curl_url_set(u, CURLUPART_QUERY, query.c_str(), CURLU_APPENDQUERY | CURLU_URLENCODE);
     }
