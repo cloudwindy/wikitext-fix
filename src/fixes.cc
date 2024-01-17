@@ -17,7 +17,7 @@ namespace Fixes
 
   void footnotes(Wiki::UBlocks &blocks, int &fix_count)
   {
-    for (auto it = blocks.begin(); it != std::prev(blocks.end()); it++)
+    for (auto it = blocks.begin(); it < std::prev(blocks.end()); it++)
     {
       Wiki::UBlock &block = *it;
       const size_t block_i = std::distance(blocks.begin(), it);
@@ -75,7 +75,7 @@ namespace Fixes
   void punctuation(Wiki::UBlocks &blocks, int &fix_count)
   {
     int flag;
-    for (auto it = blocks.begin(); it != blocks.end(); it++)
+    for (auto it = blocks.begin(); it < blocks.end(); it++)
     {
       Wiki::UBlock &block = *it;
       const size_t block_i = std::distance(blocks.begin(), it);
@@ -86,7 +86,7 @@ namespace Fixes
       const static ustring puncs = U"，。、“”【】！？『』〖〗：；「」・｜（）";
 
       ustring &str = block.value;
-      for (auto str_it = str.begin(); str_it != str.end(); str_it++)
+      for (auto str_it = str.begin(); str_it < str.end(); str_it++)
       {
         const char32_t &c = *str_it;
         size_t pos = std::distance(str.begin(), str_it);
@@ -106,7 +106,7 @@ namespace Fixes
 
   void punctuation_width(Wiki::UBlocks &blocks, int &fix_count)
   {
-    for (auto it = blocks.begin(); it != blocks.end(); it++)
+    for (auto it = blocks.begin(); it < blocks.end(); it++)
     {
       Wiki::UBlock &block = *it;
       const size_t block_i = std::distance(blocks.begin(), it);
@@ -118,7 +118,7 @@ namespace Fixes
       const static ustring puncs_zh = U"。，（）+";
 
       ustring &str = block.value;
-      for (auto str_it = str.begin(); str_it != str.end(); str_it++)
+      for (auto str_it = str.begin(); str_it < str.end(); str_it++)
       {
         const char32_t &c = *str_it;
         size_t pos = std::distance(str.begin(), str_it);
@@ -148,7 +148,7 @@ namespace Fixes
 
   void space(Wiki::UBlocks &blocks, int &fix_count)
   {
-    for (auto it = blocks.begin(); it != blocks.end(); it++)
+    for (auto it = blocks.begin(); it < blocks.end(); it++)
     {
       Wiki::UBlock &block = *it;
       const size_t block_i = std::distance(blocks.begin(), it);
@@ -157,7 +157,7 @@ namespace Fixes
         continue;
 
       ustring &str = block.value;
-      for (auto str_it = str.begin(); str_it != str.end(); str_it++)
+      for (auto str_it = str.begin(); str_it < str.end(); str_it++)
       {
         const char32_t &c = *str_it;
         size_t pos = std::distance(str.begin(), str_it);
@@ -180,7 +180,7 @@ namespace Fixes
 
         str.erase(pos, 1);
         fix_count++;
-        cerr << "Remove space in block " << block_i << " pos " << pos << endl;
+        cerr << "Remove space in block " << block_i << " pos " << pos << "." << endl;
       }
     }
   }

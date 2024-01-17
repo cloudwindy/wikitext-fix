@@ -102,6 +102,9 @@ int main(int ac, char *av[])
 
   int fix_count = 0;
 
+  if (vm.count("fix-space"))
+    Fixes::space(ublocks, fix_count);
+
   if (vm.count("fix-notes"))
     Fixes::footnotes(ublocks, fix_count);
 
@@ -110,9 +113,6 @@ int main(int ac, char *av[])
 
   if (vm.count("fix-punc-width"))
     Fixes::punctuation_width(ublocks, fix_count);
-
-  if (vm.count("fix-space"))
-    Fixes::space(ublocks, fix_count);
 
   if (!fix_count)
     cerr << "No need to fix." << endl;

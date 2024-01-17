@@ -69,6 +69,9 @@ namespace WikiParser
         wt.erase(0, text_len);
       }
 
+      if (wt.empty())
+        break;
+
       switch (next())
       {
       case CHAR:

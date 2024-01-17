@@ -186,9 +186,9 @@ string html_encode(string data)
 {
   string buffer;
   buffer.reserve(data.size());
-  for (size_t pos = 0; pos != data.size(); ++pos)
+  for (const char &ch : data)
   {
-    switch (data[pos])
+    switch (ch)
     {
     case '&':
       buffer.append("&amp;");
@@ -206,7 +206,7 @@ string html_encode(string data)
       buffer.append("&gt;");
       break;
     default:
-      buffer.append(&data[pos], 1);
+      buffer.append(&ch, 1);
       break;
     }
   }
