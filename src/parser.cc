@@ -54,7 +54,7 @@ namespace WikiParser
       size_t text_len = 0;
       for (const char &ch : wt)
       {
-        if (ch != '{' && ch != '}' && ch != '[' && ch != ']' && ch != '|' && ch != '<' && ch != '>' && ch != '/' && ch != '-' && ch != '=')
+        if (ch != '{' && ch != '}' && ch != '[' && ch != ']' && ch != '|' && ch != '<' && ch != '>' && ch != '/' && ch != '-')
         {
           text_len++;
         }

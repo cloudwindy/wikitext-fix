@@ -5,6 +5,7 @@
 
 using std::string;
 using ustring = std::u32string;
+using error = std::runtime_error;
 using namespace WikiParser;
 string html_encode(string data);
 
@@ -12,6 +13,9 @@ namespace Wiki
 {
   Wikitext::Wikitext(UBlocks ublocks)
   {
+    if (ublocks.empty())
+      throw error("wikitext not available");
+
     blocks.reserve(ublocks.size());
     for (const auto &ublock : ublocks)
     {
@@ -32,6 +36,8 @@ namespace Wiki
     Parser parser(wikitext);
     parser.parse();
     blocks = parser.get_blocks();
+    if (blocks.empty())
+      throw error("wikitext not available");
   }
   UBlocks Wikitext::decode()
   {

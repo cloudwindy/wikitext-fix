@@ -66,6 +66,8 @@
     "stack": "cpp",
     "*.ipp": "cpp",
     "ios": "cpp",
-    "sstream": "cpp"
+    "sstream": "cpp",
+    "cctype": "cpp",
+    "__locale": "cpp"
   },
 }

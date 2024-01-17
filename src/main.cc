@@ -23,8 +23,9 @@ int main(int ac, char *av[])
   auto opt = desc_visible.add_options();
   opt("help", "show help message");
   opt("render", "output parser rendered html instead of wikitext");
-  opt("fix-note", "fix footnotes location");
+  opt("fix-notes", "fix footnotes location");
   opt("fix-punc", "remove duplicate punctuation");
+  opt("fix-punc-width", "correct wrong punctuation width");
   opt("fix-space", "remove spaces between Chinese and English");
 
   po::options_description desc_hidden("Hidden Options");
@@ -39,13 +40,13 @@ int main(int ac, char *av[])
   po::variables_map vm;
   try
   {
-    // Only parse the options, so we can catch the explicit `--files`
+    // Only parse the options, so we can catch the explicit `--page-name`
     auto parsed = po::command_line_parser(ac, av)
                       .options(desc)
                       .positional(pos_desc)
                       .run();
 
-    // Make sure there were no non-positional `files` options
+    // Make sure there were no non-positional `page-name` options
     for (auto const &opt : parsed.options)
     {
       if ((opt.position_key == -1) && (opt.string_key == "page-name"))
@@ -79,6 +80,7 @@ int main(int ac, char *av[])
   {
     page_name = vm["page-name"].as<string>();
   }
+
   if (page_name.empty())
   {
     cerr << "Run " << av[0] << " --help for help." << endl;
@@ -100,11 +102,14 @@ int main(int ac, char *av[])
 
   int fix_count = 0;
 
-  if (vm.count("fix-note"))
+  if (vm.count("fix-notes"))
     Fixes::footnotes(ublocks, fix_count);
 
   if (vm.count("fix-punc"))
     Fixes::punctuation(ublocks, fix_count);
+
+  if (vm.count("fix-punc-width"))
+    Fixes::punctuation_width(ublocks, fix_count);
 
   if (vm.count("fix-space"))
     Fixes::space(ublocks, fix_count);
