@@ -102,17 +102,20 @@ int main(int ac, char *av[])
 
   int fix_count = 0;
 
-  if (vm.count("fix-space"))
-    Fixes::space(ublocks, fix_count);
+  for (int i = 0; i < 3; i++)
+  {
+    if (vm.count("fix-space"))
+      Fixes::space(ublocks, fix_count);
 
-  if (vm.count("fix-notes"))
-    Fixes::footnotes(ublocks, fix_count);
+    if (vm.count("fix-notes"))
+      Fixes::footnotes(ublocks, fix_count);
 
-  if (vm.count("fix-punc"))
-    Fixes::punctuation(ublocks, fix_count);
+    if (vm.count("fix-punc"))
+      Fixes::punctuation(ublocks, fix_count);
 
-  if (vm.count("fix-punc-width"))
-    Fixes::punctuation_width(ublocks, fix_count);
+    if (vm.count("fix-punc-width"))
+      Fixes::punctuation_width(ublocks, fix_count);
+  }
 
   if (!fix_count)
     cerr << "No need to fix." << endl;

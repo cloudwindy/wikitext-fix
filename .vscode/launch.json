@@ -12,7 +12,7 @@
         "--fix-notes",
         "--fix-punc",
         "--fix-punc-width",
-        "福赛斯研究所"
+        "Org-模式"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

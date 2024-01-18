@@ -35,7 +35,7 @@ namespace WikiParser
     Blocks get_blocks() const;
 
   private:
-    Token next();
+    Token next_token();
     void template_begin();
     void template_end();
     void table_begin();
@@ -54,6 +54,7 @@ namespace WikiParser
     void html_close_tag_end();
     void make_block(BlockType type, bool allow_empty = false);
     void update_status();
+    void update_buffer();
     struct state
     {
       unsigned int template_level : 4;

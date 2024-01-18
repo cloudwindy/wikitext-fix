@@ -114,8 +114,8 @@ namespace Fixes
       if (block.type != WikiParser::TEXT)
         continue;
 
-      const static ustring puncs_en = U".,()＋";
-      const static ustring puncs_zh = U"。，（）+";
+      const static ustring puncs_en = U".,()＋．　";
+      const static ustring puncs_zh = U"。，（）+. ";
 
       ustring &str = block.value;
       for (auto str_it = str.begin(); str_it < str.end(); str_it++)
@@ -131,13 +131,15 @@ namespace Fixes
         bool front_num = str_it != str.begin() && isdigit(str.at(pos - 1));
         bool back = str_it != std::prev(str.end()) && isalnum(str.at(pos + 1));
 
-        if (front && back)
+        char32_t punc = puncs_zh.at(flag);
+
+        if (punc != U'+' && punc != U'.' && punc != U' ' && front && back)
           continue;
 
-        if (front_num && puncs_zh.at(flag) == U'。')
+        if (front_num && punc == U'。')
           continue;
 
-        str[pos] = puncs_zh.at(flag);
+        str[pos] = punc;
         fix_count++;
         cerr << "Replace '" << converter.to_bytes(puncs_en[flag])
              << "' with '" << converter.to_bytes(puncs_zh[flag])

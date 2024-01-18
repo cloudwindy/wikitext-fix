@@ -50,29 +50,12 @@ namespace WikiParser
     while (!wt.empty())
     {
       update_status();
-
-      size_t text_len = 0;
-      for (const char &ch : wt)
-      {
-        if (ch != '{' && ch != '}' && ch != '[' && ch != ']' && ch != '|' && ch != '<' && ch != '>' && ch != '/' && ch != '-')
-        {
-          text_len++;
-        }
-        else
-        {
-          break;
-        }
-      }
-      if (text_len)
-      {
-        buf.append(wt.substr(0, text_len));
-        wt.erase(0, text_len);
-      }
+      update_buffer();
 
       if (wt.empty())
         break;
 
-      switch (next())
+      switch (next_token())
       {
       case CHAR:
         buf.push_back(wt.at(0));
@@ -287,7 +270,7 @@ namespace WikiParser
     if (s.literal || !std::isalpha(wt.front()))
     {
       buf.append("<");
-      if (s.html_level)
+      if (s.html_level && std::isalpha(wt.front()))
         s.in_html_tag = true;
       return;
     }
@@ -305,9 +288,6 @@ namespace WikiParser
     //     ^
     if (s.in_html_tag)
     {
-      if (!s.html_level)
-        make_block(HTML_TAG);
-
       // HTML void elements: https://html.spec.whatwg.org/multipage/syntax.html#void-elements
       const static std::set<string> void_elements = {
           "area", "base", "br", "col", "embed", "hr",
@@ -316,8 +296,12 @@ namespace WikiParser
       const auto it = std::find_if(void_elements.begin(), void_elements.end(),
                                    [buf = buf](const string &element)
                                    { return buf.starts_with(element); });
+      if (!s.html_level)
+        make_block(HTML_TAG);
+
       if (it == void_elements.end())
         s.html_level++;
+
       s.in_html_tag = false;
     }
     // </tag>
@@ -380,7 +364,27 @@ namespace WikiParser
                 s.in_html_close_tag ||
                 s.html_level;
   }
-  Parser::Token Parser::next()
+  void Parser::update_buffer()
+  {
+    size_t text_len = 0;
+    for (const char &ch : wt)
+    {
+      if (ch != '{' && ch != '}' && ch != '[' && ch != ']' && ch != '|' && ch != '<' && ch != '>' && ch != '/' && ch != '-')
+      {
+        text_len++;
+      }
+      else
+      {
+        break;
+      }
+    }
+    if (text_len)
+    {
+      buf.append(wt.substr(0, text_len));
+      wt.erase(0, text_len);
+    }
+  }
+  Parser::Token Parser::next_token()
   {
     if (wt.starts_with("==\n"))
     {

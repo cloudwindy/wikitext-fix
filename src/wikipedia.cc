@@ -12,11 +12,11 @@ static string http_get(string url);
 
 namespace Wikipedia
 {
-  static string page_url(const string page_name);
+  static string page_wikitext_url(const string page_name);
 
   string page_wikitext(string page_name)
   {
-    const string url = page_url(page_name);
+    const string url = page_wikitext_url(page_name);
     const string resp = http_get(url);
     Json::Reader reader;
     Json::Value root;
@@ -28,7 +28,7 @@ namespace Wikipedia
     return root["parse"]["wikitext"].asString();
   }
 
-  static string page_url(const string page_name)
+  static string page_wikitext_url(const string page_name)
   {
     CURLU *u = curl_url();
     if (!u)
