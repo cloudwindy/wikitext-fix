@@ -1,6 +1,4 @@
 #include <iostream>
-
-#include <curl/curl.h>
 #include <boost/program_options.hpp>
 
 #include "wikipedia.hh"
@@ -15,10 +13,6 @@ namespace po = boost::program_options;
 
 int main(int ac, char *av[])
 {
-  curl_global_init(CURL_GLOBAL_ALL);
-  curl_version_info_data *curl_ver = curl_version_info(CURLVERSION_NOW);
-  cerr << "libcurl version " << curl_ver->version << endl;
-
   po::options_description desc_visible("Options");
   auto opt = desc_visible.add_options();
   opt("help", "show help message");
@@ -65,14 +59,14 @@ int main(int ac, char *av[])
          << '\n';
     cerr << "Usage: " << av[0] << " [options] <page-name> [options]\n";
     cerr << desc_visible << endl;
-    return 1;
+    return EXIT_FAILURE;
   }
 
   if (vm.count("help"))
   {
     cerr << "Usage: " << av[0] << " [options] <page-name> [options]\n";
     cout << desc_visible << "\n";
-    return 1;
+    return EXIT_FAILURE;
   }
 
   string page_name;
@@ -84,20 +78,13 @@ int main(int ac, char *av[])
   if (page_name.empty())
   {
     cerr << "Run " << av[0] << " --help for help." << endl;
-    return 1;
+    return EXIT_FAILURE;
   }
   cerr << "Fetching " << page_name << "..." << endl;
   string bytes = Wikipedia::page_wikitext(page_name);
-  if (bytes.starts_with("#REDIRECT"))
-  {
-    page_name = bytes.substr(bytes.find("[[") + 2);
-    page_name = page_name.substr(0, page_name.rfind("]]"));
-    cerr << "Redirecting to " << page_name << "..." << endl;
-    bytes = Wikipedia::page_wikitext(page_name);
-  }
   cerr << "Parsing..." << endl;
   Wiki::Wikitext wikitext(bytes);
-  Wiki::UBlocks ublocks = wikitext.decode();
+  Wiki::Blocks ublocks = wikitext.decode();
   cerr << "Fixing... (" << wikitext.size() << " blocks)" << endl;
 
   int fix_count = 0;
@@ -130,6 +117,6 @@ int main(int ac, char *av[])
     cout << wikitext.color_html() << endl;
   else
     cout << wikitext << endl;
-
-  curl_global_cleanup();
+  
+  return EXIT_SUCCESS;
 }

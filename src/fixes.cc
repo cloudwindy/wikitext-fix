@@ -15,11 +15,11 @@ namespace Fixes
   bool isalnum(char32_t ch);
   bool issymbol(char32_t ch);
 
-  void footnotes(Wiki::UBlocks &blocks, int &fix_count)
+  void footnotes(Wiki::Blocks &blocks, int &fix_count)
   {
     for (auto it = blocks.begin(); it < std::prev(blocks.end()); it++)
     {
-      Wiki::UBlock &block = *it;
+      Wiki::Block &block = *it;
       const size_t block_i = std::distance(blocks.begin(), it);
 
       if (block.type != WikiParser::TEXT)
@@ -30,17 +30,17 @@ namespace Fixes
       if (punc_i == string::npos)
         continue;
 
-      Wiki::UBlock &next_block = *(&block + 1);
+      Wiki::Block &next_block = *(&block + 1);
       if (next_block.type != WikiParser::HTML_TAG && next_block.type != WikiParser::HTML_SELF_CLOSING_TAG || !next_block.value.starts_with(U"ref"))
         continue;
 
-      const auto next_text_it = std::find_if(it + 1, blocks.end(), [](Wiki::UBlock &block)
+      const auto next_text_it = std::find_if(it + 1, blocks.end(), [](Wiki::Block &block)
                                              { return block.type == WikiParser::TEXT || block.type == WikiParser::LINK; });
       // We're on last text block.
       if (next_text_it == blocks.end())
         break;
 
-      Wiki::UBlock &next_text_block = *next_text_it;
+      Wiki::Block &next_text_block = *next_text_it;
       const size_t next_text_block_i = std::distance(blocks.begin(), next_text_it);
 
       // Find stop marker.
@@ -72,12 +72,12 @@ namespace Fixes
     }
   }
 
-  void punctuation(Wiki::UBlocks &blocks, int &fix_count)
+  void punctuation(Wiki::Blocks &blocks, int &fix_count)
   {
     int flag;
     for (auto it = blocks.begin(); it < blocks.end(); it++)
     {
-      Wiki::UBlock &block = *it;
+      Wiki::Block &block = *it;
       const size_t block_i = std::distance(blocks.begin(), it);
 
       if (block.type != WikiParser::TEXT || block.type != WikiParser::LINK)
@@ -104,18 +104,18 @@ namespace Fixes
     }
   }
 
-  void punctuation_width(Wiki::UBlocks &blocks, int &fix_count)
+  void punctuation_width(Wiki::Blocks &blocks, int &fix_count)
   {
     for (auto it = blocks.begin(); it < blocks.end(); it++)
     {
-      Wiki::UBlock &block = *it;
+      Wiki::Block &block = *it;
       const size_t block_i = std::distance(blocks.begin(), it);
 
       if (block.type != WikiParser::TEXT)
         continue;
 
-      const static ustring puncs_en = U".,()＋．　";
-      const static ustring puncs_zh = U"。，（）+. ";
+      const static ustring puncs_en = U".,()＋．　丶";
+      const static ustring puncs_zh = U"。，（）+. 、";
 
       ustring &str = block.value;
       for (auto str_it = str.begin(); str_it < str.end(); str_it++)
@@ -148,11 +148,11 @@ namespace Fixes
     }
   }
 
-  void space(Wiki::UBlocks &blocks, int &fix_count)
+  void space(Wiki::Blocks &blocks, int &fix_count)
   {
     for (auto it = blocks.begin(); it < blocks.end(); it++)
     {
-      Wiki::UBlock &block = *it;
+      Wiki::Block &block = *it;
       const size_t block_i = std::distance(blocks.begin(), it);
 
       if (block.type != WikiParser::TEXT)

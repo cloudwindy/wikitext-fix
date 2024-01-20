@@ -17,7 +17,7 @@ using std::string;
 
 namespace WikiParser
 {
-  enum Parser::Token : int
+  enum BlockParser::Token : int
   {
     CHAR,
     TEMPLATE_BEGIN,       // {{
@@ -37,15 +37,15 @@ namespace WikiParser
     HTML_TAG_BEGIN,       // <
     HTML_TAG_END,         // >
   };
-  Parser::Parser(string wt)
+  BlockParser::BlockParser(string wt)
   {
     this->wt = wt;
   }
-  Blocks Parser::get_blocks() const
+  Blocks BlockParser::get_blocks() const
   {
     return blocks;
   }
-  void Parser::parse()
+  void BlockParser::parse()
   {
     while (!wt.empty())
     {
@@ -114,7 +114,7 @@ namespace WikiParser
     make_block(TEXT);
   }
   // {{
-  void Parser::template_begin()
+  void BlockParser::template_begin()
   {
     if (s.literal)
     {
@@ -127,7 +127,7 @@ namespace WikiParser
     s.template_level++;
   }
   // }}
-  void Parser::template_end()
+  void BlockParser::template_end()
   {
     if (s.template_level != 1)
     {
@@ -140,7 +140,7 @@ namespace WikiParser
     make_block(TEMPLATE);
   }
   // {|
-  void Parser::table_begin()
+  void BlockParser::table_begin()
   {
     if (s.literal)
     {
@@ -151,7 +151,7 @@ namespace WikiParser
     s.in_table = true;
   }
   // |}
-  void Parser::table_end()
+  void BlockParser::table_end()
   {
     if (!s.in_table)
     {
@@ -172,7 +172,7 @@ namespace WikiParser
     make_block(TABLE);
   }
   // [[
-  void Parser::link_begin()
+  void BlockParser::link_begin()
   {
     if (s.literal)
     {
@@ -185,7 +185,7 @@ namespace WikiParser
     s.link_level++;
   }
   // ]]
-  void Parser::link_end()
+  void BlockParser::link_end()
   {
     if (s.link_level != 1)
     {
@@ -198,7 +198,7 @@ namespace WikiParser
     make_block(LINK);
   }
   // [
-  void Parser::ext_link_begin()
+  void BlockParser::ext_link_begin()
   {
     if (s.literal)
     {
@@ -209,7 +209,7 @@ namespace WikiParser
     s.in_ext_link = true;
   }
   // ]
-  void Parser::ext_link_end()
+  void BlockParser::ext_link_end()
   {
     if (!s.in_ext_link)
     {
@@ -220,7 +220,7 @@ namespace WikiParser
     make_block(EXT_LINK);
   }
   // <!--
-  void Parser::comment_begin()
+  void BlockParser::comment_begin()
   {
     if (s.literal)
     {
@@ -231,7 +231,7 @@ namespace WikiParser
     s.in_comment = true;
   }
   // -->
-  void Parser::comment_end()
+  void BlockParser::comment_end()
   {
     if (!s.in_comment)
     {
@@ -242,7 +242,7 @@ namespace WikiParser
     make_block(COMMENT);
   }
   // -{
-  void Parser::conv_tag_begin()
+  void BlockParser::conv_tag_begin()
   {
     if (s.literal)
     {
@@ -253,7 +253,7 @@ namespace WikiParser
     s.in_conv_tag = true;
   }
   // }-
-  void Parser::conv_tag_end()
+  void BlockParser::conv_tag_end()
   {
     if (!s.in_conv_tag)
     {
@@ -265,7 +265,7 @@ namespace WikiParser
   }
   // <tag
   // ^
-  void Parser::html_tag_begin()
+  void BlockParser::html_tag_begin()
   {
     if (s.literal || !std::isalpha(wt.front()))
     {
@@ -279,7 +279,7 @@ namespace WikiParser
   }
   // tag>
   //    ^
-  void Parser::html_tag_end()
+  void BlockParser::html_tag_end()
   {
     if (s.html_level || !s.in_html_tag && !s.in_html_close_tag)
       buf.append(">");
@@ -315,7 +315,7 @@ namespace WikiParser
   }
   // </tag>
   //  ^
-  void Parser::html_close_tag_begin()
+  void BlockParser::html_close_tag_begin()
   {
     if (s.html_level != 1)
     {
@@ -333,7 +333,7 @@ namespace WikiParser
   }
   // <tag />
   //       ^
-  void Parser::html_close_tag_end()
+  void BlockParser::html_close_tag_end()
   {
     if (!s.in_html_tag || s.html_level)
     {
@@ -344,7 +344,7 @@ namespace WikiParser
     s.in_html_tag = false;
     make_block(HTML_SELF_CLOSING_TAG);
   }
-  void Parser::make_block(BlockType type, bool allow_empty)
+  void BlockParser::make_block(BlockType type, bool allow_empty)
   {
     update_status();
     if ((!buf.empty() || allow_empty) && (type != TEXT || !s.literal))
@@ -352,7 +352,7 @@ namespace WikiParser
       blocks.push_back({.type = type, .value = std::move(buf)});
     }
   }
-  void Parser::update_status()
+  void BlockParser::update_status()
   {
     s.literal = s.template_level ||
                 s.in_table ||
@@ -364,7 +364,7 @@ namespace WikiParser
                 s.in_html_close_tag ||
                 s.html_level;
   }
-  void Parser::update_buffer()
+  void BlockParser::update_buffer()
   {
     size_t text_len = 0;
     for (const char &ch : wt)
@@ -384,7 +384,7 @@ namespace WikiParser
       wt.erase(0, text_len);
     }
   }
-  Parser::Token Parser::next_token()
+  BlockParser::Token BlockParser::next_token()
   {
     if (wt.starts_with("==\n"))
     {

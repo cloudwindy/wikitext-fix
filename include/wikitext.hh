@@ -26,11 +26,11 @@ namespace WikiParser
     std::string value;
   };
   using Blocks = std::vector<Block>;
-  class Parser
+  class BlockParser
   {
   public:
     enum Token : int;
-    Parser(std::string wikitext);
+    BlockParser(std::string wikitext);
     void parse();
     Blocks get_blocks() const;
 
@@ -77,26 +77,28 @@ namespace WikiParser
 
 namespace Wiki
 {
-  struct UBlock
+  using WikiParser::BlockType;
+  struct Block
   {
-    WikiParser::BlockType type;
+    BlockType type;
     std::u32string value;
     std::u32string prepend;
     std::u32string append;
   };
-  using UBlocks = std::vector<UBlock>;
+  using Blocks = std::vector<Block>;
   class Wikitext
   {
   public:
-    Wikitext(UBlocks ublocks);
+    Wikitext(Blocks ublocks);
     Wikitext(std::string wikitext);
     std::string to_string() const;
     std::string color_html() const;
-    UBlocks decode();
+    Blocks decode();
     size_t size();
     friend std::ostream &operator<<(std::ostream &os, const Wikitext &s);
 
   private:
-    WikiParser::Blocks blocks;
+    WikiParser::Blocks parser_blocks;
+    std::string redirect_to;
   };
 };

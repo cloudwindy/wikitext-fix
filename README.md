@@ -15,7 +15,7 @@ git clone https://github.com/cloudwindy/wikitext-fix
 cd wikitext-fix
 mkdir build && cd build
 cmake ..
-make
+cmake --build .
 cd bin && ./wikifix --help
 ```
 

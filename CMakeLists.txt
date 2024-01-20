@@ -6,13 +6,15 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-include_directories(include)
-find_package(CURL REQUIRED)
 find_package(jsoncpp REQUIRED)
 find_package(Boost COMPONENTS program_options REQUIRED)
 
+include(FetchContent)
+FetchContent_Declare(
+  cpr
+  GIT_REPOSITORY https://github.com/libcpr/cpr.git
+  GIT_TAG 3b15fa82ea74739b574d705fea44959b58142eb8
+)
+FetchContent_MakeAvailable(cpr)
+
 add_subdirectory(src)
-set_target_properties(wikifix PROPERTIES CXX_STANDARD 20)
-target_link_libraries(wikifix CURL::libcurl)
-target_link_libraries(wikifix jsoncpp_lib)
-target_link_libraries(wikifix ${Boost_LIBRARIES})

@@ -11,39 +11,39 @@ string html_encode(string data);
 
 namespace Wiki
 {
-  Wikitext::Wikitext(UBlocks ublocks)
+  Wikitext::Wikitext(Blocks ublocks)
   {
     if (ublocks.empty())
       throw error("wikitext not available");
 
-    blocks.reserve(ublocks.size());
+    parser_blocks.reserve(ublocks.size());
     for (const auto &ublock : ublocks)
     {
       if (!ublock.prepend.empty())
-        blocks.push_back({.type = WikiParser::TEXT,
-                          .value = converter.to_bytes(ublock.prepend)});
+        parser_blocks.push_back({.type = TEXT,
+                                 .value = converter.to_bytes(ublock.prepend)});
 
-      blocks.push_back({.type = ublock.type,
-                        .value = converter.to_bytes(ublock.value)});
+      parser_blocks.push_back({.type = ublock.type,
+                               .value = converter.to_bytes(ublock.value)});
 
       if (!ublock.append.empty())
-        blocks.push_back({.type = WikiParser::TEXT,
-                          .value = converter.to_bytes(ublock.append)});
+        parser_blocks.push_back({.type = TEXT,
+                                 .value = converter.to_bytes(ublock.append)});
     }
   }
   Wikitext::Wikitext(string wikitext)
   {
-    Parser parser(wikitext);
+    BlockParser parser(wikitext);
     parser.parse();
-    blocks = parser.get_blocks();
-    if (blocks.empty())
+    parser_blocks = parser.get_blocks();
+    if (parser_blocks.empty())
       throw error("wikitext not available");
   }
-  UBlocks Wikitext::decode()
+  Blocks Wikitext::decode()
   {
-    UBlocks ublocks;
-    ublocks.reserve(blocks.size());
-    for (const auto &block : blocks)
+    Blocks ublocks;
+    ublocks.reserve(parser_blocks.size());
+    for (const auto &block : parser_blocks)
     {
       ublocks.push_back({.type = block.type,
                          .value = converter.from_bytes(block.value)});
@@ -52,8 +52,11 @@ namespace Wiki
   }
   string Wikitext::to_string() const
   {
+    if (parser_blocks.empty())
+      throw error("wikitext not parsed");
+
     string buf;
-    for (const auto &block : blocks)
+    for (const auto &block : parser_blocks)
     {
       string begin;
       string end;
@@ -102,8 +105,11 @@ namespace Wiki
   }
   string Wikitext::color_html() const
   {
+    if (parser_blocks.empty())
+      throw error("wikitext not parsed");
+
     string buf;
-    for (const auto &block : blocks)
+    for (const auto &block : parser_blocks)
     {
       string begin;
       string end;
@@ -174,7 +180,7 @@ namespace Wiki
   }
   size_t Wikitext::size()
   {
-    return blocks.size();
+    return parser_blocks.size();
   }
   std::ostream &operator<<(std::ostream &os, const Wikitext &wikitext)
   {
