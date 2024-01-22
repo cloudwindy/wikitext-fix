@@ -1,7 +1,8 @@
 #include <iostream>
-#include <boost/program_options.hpp>
+#include <fstream>
+#include <CLI/CLI.hpp>
 
-#include "wikipedia.hh"
+#include "api.hh"
 #include "wikitext.hh"
 #include "fixes.hh"
 #include "utf-32.hh"
@@ -9,114 +10,72 @@
 using std::cout, std::cerr, std::endl;
 using std::string;
 using ustring = std::u32string;
-namespace po = boost::program_options;
 
-int main(int ac, char *av[])
+class StreamType
 {
-  po::options_description desc_visible("Options");
-  auto opt = desc_visible.add_options();
-  opt("help", "show help message");
-  opt("render", "output parser rendered html instead of wikitext");
-  opt("fix-notes", "fix footnotes location");
-  opt("fix-punc", "remove duplicate punctuation");
-  opt("fix-punc-width", "correct wrong punctuation width");
-  opt("fix-space", "remove spaces between Chinese and English");
+public:
+  StreamType &operator<<(const char *);
+};
 
-  po::options_description desc_hidden("Hidden Options");
-  desc_hidden.add_options()("page-name", "page name");
+int main(int argc, char *argv[])
+{
+  CLI::App app;
 
-  po::options_description desc;
-  desc.add(desc_visible).add(desc_hidden);
+  string page_name, output_path;
+  int old_id = 0;
+  bool render = false, no_fix = false;
+  app.add_option("pos", page_name, "Page title name")->required();
+  app.add_option("-o,--output", output_path, "Write to file instead of stdout");
+  app.add_option("-O,--oldid", old_id, "Use an old version");
+  app.add_flag("-r,--render", render, "Output parser rendered html");
+  app.add_flag("-n,--no-fix", no_fix, "Disable fixing");
+  app.validate_positionals();
+  app.validate_optional_arguments();
 
-  po::positional_options_description pos_desc;
-  pos_desc.add("page-name", -1);
+  CLI11_PARSE(app, argc, argv);
 
-  po::variables_map vm;
-  try
-  {
-    // Only parse the options, so we can catch the explicit `--page-name`
-    auto parsed = po::command_line_parser(ac, av)
-                      .options(desc)
-                      .positional(pos_desc)
-                      .run();
-
-    // Make sure there were no non-positional `page-name` options
-    for (auto const &opt : parsed.options)
-    {
-      if ((opt.position_key == -1) && (opt.string_key == "page-name"))
-      {
-        throw po::unknown_option("page-name");
-      }
-    }
-
-    po::store(parsed, vm);
-    po::notify(vm);
-  }
-  catch (const po::error &e)
-  {
-    cerr << "Couldn't parse command line arguments properly:\n";
-    cerr << e.what() << '\n'
-         << '\n';
-    cerr << "Usage: " << av[0] << " [options] <page-name> [options]\n";
-    cerr << desc_visible << endl;
-    return EXIT_FAILURE;
-  }
-
-  if (vm.count("help"))
-  {
-    cerr << "Usage: " << av[0] << " [options] <page-name> [options]\n";
-    cout << desc_visible << "\n";
-    return EXIT_FAILURE;
-  }
-
-  string page_name;
-  if (vm.count("page-name"))
-  {
-    page_name = vm["page-name"].as<string>();
-  }
-
-  if (page_name.empty())
-  {
-    cerr << "Run " << av[0] << " --help for help." << endl;
-    return EXIT_FAILURE;
-  }
   cerr << "Fetching " << page_name << "..." << endl;
-  string bytes = Wikipedia::page_wikitext(page_name);
+  string bytes = MWAPI::page_wikitext(page_name);
   cerr << "Parsing..." << endl;
   Wiki::Wikitext wikitext(bytes);
   Wiki::Blocks ublocks = wikitext.decode();
-  cerr << "Fixing... (" << wikitext.size() << " blocks)" << endl;
 
-  int fix_count = 0;
-
-  for (int i = 0; i < 3; i++)
+  if (!no_fix)
   {
-    if (vm.count("fix-space"))
+    cerr << "Fixing... (" << wikitext.size() << " blocks)" << endl;
+    int fix_count = 0;
+    for (int i = 0; i < 3; i++)
+    {
       Fixes::space(ublocks, fix_count);
-
-    if (vm.count("fix-notes"))
       Fixes::footnotes(ublocks, fix_count);
-
-    if (vm.count("fix-punc"))
       Fixes::punctuation(ublocks, fix_count);
-
-    if (vm.count("fix-punc-width"))
       Fixes::punctuation_width(ublocks, fix_count);
-  }
+    }
 
-  if (!fix_count)
-    cerr << "No need to fix." << endl;
-  else if (fix_count == 1)
-    cerr << "1 fix applied." << endl;
-  else if (fix_count > 1)
-    cerr << fix_count << " fixes applied." << endl;
+    if (!fix_count)
+    {
+      cerr << "No need to fix." << endl;
+    }
+    else if (fix_count == 1)
+    {
+      cerr << "1 fix applied." << endl;
+    }
+    else if (fix_count > 1)
+    {
+      cerr << fix_count << " fixes applied." << endl;
+    }
+  }
+  else
+  {
+    cerr << "Not fixed. (" << wikitext.size() << " blocks)" << endl;
+  }
 
   wikitext = Wiki::Wikitext(ublocks);
 
-  if (vm.count("render"))
+  if (render)
     cout << wikitext.color_html() << endl;
   else
     cout << wikitext << endl;
-  
+
   return EXIT_SUCCESS;
 }

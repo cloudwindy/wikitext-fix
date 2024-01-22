@@ -1,20 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
 project(WIKIFIX)
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-find_package(jsoncpp REQUIRED)
-find_package(Boost COMPONENTS program_options REQUIRED)
-
-include(FetchContent)
-FetchContent_Declare(
-  cpr
-  GIT_REPOSITORY https://github.com/libcpr/cpr.git
-  GIT_TAG 3b15fa82ea74739b574d705fea44959b58142eb8
-)
-FetchContent_MakeAvailable(cpr)
+include(cmake/CPM.cmake)
+CPMAddPackage("gh:CLIUtils/CLI11@2.3.2")
+CPMAddPackage("gh:libcpr/cpr#1.10.5")
+CPMAddPackage("gh:open-source-parsers/jsoncpp#1.9.5")
 
 add_subdirectory(src)

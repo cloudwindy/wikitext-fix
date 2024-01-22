@@ -8,11 +8,7 @@
       // Resolved by CMake Tools:
       "program": "${command:cmake.launchTargetPath}",
       "args": [
-        "--fix-space",
-        "--fix-notes",
-        "--fix-punc",
-        "--fix-punc-width",
-        "Org-模式"
+        "乾淨世界"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

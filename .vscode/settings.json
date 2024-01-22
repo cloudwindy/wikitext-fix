@@ -68,6 +68,7 @@
     "ios": "cpp",
     "sstream": "cpp",
     "cctype": "cpp",
-    "__locale": "cpp"
+    "__locale": "cpp",
+    "ranges": "cpp"
   },
 }

@@ -1,6 +1,8 @@
 #include <set>
 #include <iostream>
 #include <algorithm>
+#include <ranges>
+#include <regex>
 
 #include "utf-32.hh"
 #include "fixes.hh"
@@ -17,31 +19,34 @@ namespace Fixes
 
   void footnotes(Wiki::Blocks &blocks, int &fix_count)
   {
-    for (auto it = blocks.begin(); it < std::prev(blocks.end()); it++)
+    for (const auto &&[blk_i, blk] :
+         std::views::enumerate(blocks | std::views::slide(2)))
     {
-      Wiki::Block &block = *it;
-      const size_t block_i = std::distance(blocks.begin(), it);
-
-      if (block.type != WikiParser::TEXT)
+      if (blk[0].type != WikiParser::TEXT)
         continue;
 
       const static ustring puncs = U"，。、！？；";
-      const size_t punc_i = puncs.find(block.value.back());
+      const size_t punc_i = puncs.find(blk[0].value.back());
       if (punc_i == string::npos)
         continue;
 
-      Wiki::Block &next_block = *(&block + 1);
-      if (next_block.type != WikiParser::HTML_TAG && next_block.type != WikiParser::HTML_SELF_CLOSING_TAG || !next_block.value.starts_with(U"ref"))
+      if ((blk[1].type != WikiParser::HTML_TAG &&
+           blk[1].type != WikiParser::HTML_SELF_CLOSING_TAG) ||
+          !blk[1].value.starts_with(U"ref"))
         continue;
 
-      const auto next_text_it = std::find_if(it + 1, blocks.end(), [](Wiki::Block &block)
-                                             { return block.type == WikiParser::TEXT || block.type == WikiParser::LINK; });
+      const auto tblk_next = std::ranges::find_if(
+          std::views::drop(blocks, blk_i + 1),
+          [](const auto &blk)
+          { return blk.type == WikiParser::TEXT ||
+                   blk.type == WikiParser::LINK; });
       // We're on last text block.
-      if (next_text_it == blocks.end())
+      if (tblk_next == blocks.end())
         break;
 
-      Wiki::Block &next_text_block = *next_text_it;
-      const size_t next_text_block_i = std::distance(blocks.begin(), next_text_it);
+      const size_t text_next_i = std::distance(
+          blocks.begin(),
+          tblk_next);
 
       // Find stop marker.
       const std::set<ustring> stop_markers{
@@ -50,54 +55,51 @@ namespace Fixes
           U"」",
           U"』",
       };
-      const auto next_stop_it = std::find_if(stop_markers.begin(), stop_markers.end(), [&block = next_text_block](ustring stop)
-                                             { return block.value.starts_with(stop); });
-      if (next_stop_it != stop_markers.end())
+      const auto stop_next = std::ranges::find_if(
+          stop_markers,
+          [tblk = tblk_next](ustring stop)
+          { return tblk->value.starts_with(stop); });
+      if (stop_next != stop_markers.end())
         continue;
 
       // Remove period.
-      block.value.pop_back();
+      blk[0].value.pop_back();
       fix_count++;
 
       const char32_t punc_ch = puncs.at(punc_i);
 
-      if (puncs.find(next_text_block.value.front()) != string::npos)
+      if (puncs.find(tblk_next->value.front()) != string::npos)
       {
-        cerr << "Remove '" << converter.to_bytes(punc_ch) << "' in block " << block_i << "." << endl;
+        cerr << "Remove '" << converter.to_bytes(punc_ch) << "' in blk " << blk_i << "." << endl;
         continue;
       }
-      next_text_block.prepend = punc_ch;
+      tblk_next->prepend = punc_ch;
       cerr << "Shift '" << converter.to_bytes(punc_ch)
-           << "' from block " << block_i << " to " << next_text_block_i << "." << endl;
+           << "' from blk " << blk_i << " to blk " << text_next_i << "." << endl;
     }
   }
 
   void punctuation(Wiki::Blocks &blocks, int &fix_count)
   {
     int flag;
-    for (auto it = blocks.begin(); it < blocks.end(); it++)
+    for (const auto &&[blk_i, blk] : std::views::enumerate(blocks))
     {
-      Wiki::Block &block = *it;
-      const size_t block_i = std::distance(blocks.begin(), it);
-
-      if (block.type != WikiParser::TEXT || block.type != WikiParser::LINK)
+      if (blk.type != WikiParser::TEXT ||
+          blk.type != WikiParser::LINK)
         continue;
 
       const static ustring puncs = U"，。、“”【】！？『』〖〗：；「」・｜（）";
 
-      ustring &str = block.value;
-      for (auto str_it = str.begin(); str_it < str.end(); str_it++)
+      ustring &str = blk.value;
+      for (const auto &&[pos, c] : std::views::enumerate(str))
       {
-        const char32_t &c = *str_it;
-        size_t pos = std::distance(str.begin(), str_it);
-
         int flag_new = puncs.find(c);
         if (flag != string::npos && flag == flag_new)
         {
           str.erase(pos, 1);
           fix_count++;
           cerr << "Remove '" << converter.to_bytes(puncs[flag])
-               << "' in block " << block_i << " pos " << pos << "." << endl;
+               << "' at " << pos << " of blk " << blk_i << "." << endl;
         }
         flag = flag_new;
       }
@@ -106,96 +108,94 @@ namespace Fixes
 
   void punctuation_width(Wiki::Blocks &blocks, int &fix_count)
   {
-    for (auto it = blocks.begin(); it < blocks.end(); it++)
+    for (const auto &&[blk_i, blk] : std::views::enumerate(blocks))
     {
-      Wiki::Block &block = *it;
-      const size_t block_i = std::distance(blocks.begin(), it);
-
-      if (block.type != WikiParser::TEXT)
+      if (blk.type != WikiParser::TEXT)
         continue;
 
       const static ustring puncs_en = U".,()＋．　丶";
       const static ustring puncs_zh = U"。，（）+. 、";
 
-      ustring &str = block.value;
-      for (auto str_it = str.begin(); str_it < str.end(); str_it++)
+      ustring &str = blk.value;
+      for (const auto &&[pos, c] : std::views::enumerate(str))
       {
-        const char32_t &c = *str_it;
-        size_t pos = std::distance(str.begin(), str_it);
-
         int flag = puncs_en.find(c);
         if (flag == string::npos)
           continue;
 
-        bool front = str_it != str.begin() && isalnum(str.at(pos - 1));
-        bool front_num = str_it != str.begin() && isdigit(str.at(pos - 1));
-        bool back = str_it != std::prev(str.end()) && isalnum(str.at(pos + 1));
+        bool front = pos != 0 && isalnum(str.at(pos - 1));
+        bool back = pos != str.size() - 1 && isalnum(str.at(pos + 1));
 
         char32_t punc = puncs_zh.at(flag);
 
         if (punc != U'+' && punc != U'.' && punc != U' ' && front && back)
           continue;
 
-        if (front_num && punc == U'。')
+        if (front && punc == U'。')
           continue;
 
-        str[pos] = punc;
+        c = punc;
         fix_count++;
         cerr << "Replace '" << converter.to_bytes(puncs_en[flag])
              << "' with '" << converter.to_bytes(puncs_zh[flag])
-             << "' in block " << block_i << " pos " << pos << "." << endl;
+             << "' at " << pos << " of blk " << blk_i << "." << endl;
       }
     }
   }
 
   void space(Wiki::Blocks &blocks, int &fix_count)
   {
-    for (auto it = blocks.begin(); it < blocks.end(); it++)
+    for (const auto &&[blk_i, blk] : std::views::enumerate(blocks))
     {
-      Wiki::Block &block = *it;
-      const size_t block_i = std::distance(blocks.begin(), it);
-
-      if (block.type != WikiParser::TEXT)
+      if (blk.type != WikiParser::TEXT)
         continue;
 
-      ustring &str = block.value;
-      for (auto str_it = str.begin(); str_it < str.end(); str_it++)
+      ustring &str = blk.value;
+      for (const auto &&[pos, c] : std::views::enumerate(str))
       {
-        const char32_t &c = *str_it;
-        size_t pos = std::distance(str.begin(), str_it);
-
         if (c != ' ')
           continue;
 
-        bool first = str_it == str.begin();
-        bool front = !first && isalnum(str.at(pos - 1));
-        bool front_sym = !first && issymbol(str.at(pos - 1));
-        bool last = str_it == std::prev(str.end());
-        bool back = !last && isalnum(str.at(pos + 1));
-        bool back_sym = !last && issymbol(str.at(pos + 1));
+        bool front = pos != 0 && isalnum(str.at(pos - 1));
+        bool front_sym = pos != 0 && issymbol(str.at(pos - 1));
+        bool back = pos != str.size() - 1 && isalnum(str.at(pos + 1));
+        bool back_sym = pos != str.size() - 1 && issymbol(str.at(pos + 1));
 
         if (front_sym || back_sym)
           continue;
 
-        if (!first && !last && front && back)
+        if (pos != 0 && pos != str.size() - 1 && front && back)
           continue;
 
         str.erase(pos, 1);
         fix_count++;
-        cerr << "Remove space in block " << block_i << " pos " << pos << "." << endl;
+        cerr << "Remove space at " << pos << " of blk " << blk_i << "." << endl;
       }
     }
   }
+
+  void newline(Wiki::Blocks blocks, int &fix_count)
+  {
+    for (const auto &&[blk_i, blk] : std::views::enumerate(blocks))
+    {
+      if (blk.type != WikiParser::TEXT)
+        continue;
+
+      ustring &str = blk.value;
+      for (const auto &&[pos, c] : std::views::enumerate(str))
+      {
+      }
+    }
+  }
+
   bool isdigit(char32_t ch)
   {
     return ((ch - '0' >= 0) && (ch - '0' < 10));
   }
-
   bool isalnum(char32_t ch)
   {
     return (ch - 'a' >= 0) && (ch - 'a' < 26) || (ch - 'A' >= 0) && (ch - 'A' < 26) || (ch - '0' >= 0) && (ch - '0' < 10);
   }
-
   bool issymbol(char32_t ch)
   {
     return (ch >= '!') && (ch <= '/') || (ch >= ':') && (ch <= '@') || (ch >= '[') && (ch <= '`') || (ch >= '{') && (ch <= '}');

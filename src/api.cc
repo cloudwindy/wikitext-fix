@@ -1,28 +1,32 @@
-#include "wikipedia.hh"
+#include "api.hh"
 #include <vector>
 #include <iostream>
 #include <stdexcept>
 
 #include <cpr/cpr.h>
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 
 using std::cerr, std::endl;
 using std::string, std::vector;
 using error = std::runtime_error;
 
-namespace Wikipedia
+namespace MWAPI
 {
   static string get_page_wikitext(const string page_name);
 
   string page_wikitext(string page_name)
   {
     const string resp = get_page_wikitext(page_name);
-    Json::Reader reader;
     Json::Value root;
 
-    if (!reader.parse(resp, root))
+    if (!Json::Reader().parse(resp, root))
     {
       throw error("invalid json");
+    }
+
+    if (root["error"])
+    {
+      throw error("MediaWiki error: " + root["error"]["info"].asString());
     }
 
     return root["parse"]["wikitext"].asString();
@@ -44,4 +48,4 @@ namespace Wikipedia
 
     return resp.text;
   }
-} // namespace Wikipedia
+} // namespace MWAPI
