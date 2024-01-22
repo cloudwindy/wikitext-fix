@@ -11,12 +11,6 @@ using std::cout, std::cerr, std::endl;
 using std::string;
 using ustring = std::u32string;
 
-class StreamType
-{
-public:
-  StreamType &operator<<(const char *);
-};
-
 int main(int argc, char *argv[])
 {
   CLI::App app;
