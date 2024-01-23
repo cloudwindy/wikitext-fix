@@ -36,18 +36,15 @@ namespace WikiParser
     HTML_TAG_BEGIN,       // <
     HTML_TAG_END,         // >
   };
-  BlockParser::BlockParser(string wt)
-  {
-    this->wt = wt;
-  }
+  BlockParser::BlockParser(string wt) : wt(std::move(wt)){};
   void BlockParser::set_wikitext(string wt)
   {
-    this->wt = wt;
+    this->wt = std::move(wt);
   }
   void BlockParser::reset()
   {
-    this->wt.clear();
-    this->blocks.clear();
+    wt.clear();
+    blocks.clear();
   }
   Blocks BlockParser::get_blocks() const
   {

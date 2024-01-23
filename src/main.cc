@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+
 #include <CLI/CLI.hpp>
 
 #include "api.hh"
@@ -7,7 +8,7 @@
 #include "fixes.hh"
 #include "utf-32.hh"
 
-using std::cout, std::cerr, std::endl;
+using std::cout, std::cerr, std::endl, std::flush;
 using std::string;
 using ustring = std::u32string;
 
@@ -17,46 +18,64 @@ int main(int argc, char *argv[])
 
   string page_name, output_path;
   int old_id = 0;
-  bool render = false, no_fix = false;
+  bool edit = false, render = false, no_fix = false, silent = false;
   app.add_option("pos", page_name, "Page title name")->required();
+  app.add_flag("-e,--edit", edit, "Edit page");
+  app.add_flag("-n,--no-fix", no_fix, "Disable fixing");
   app.add_option("-o,--output", output_path, "Write to file instead of stdout");
   app.add_option("-O,--oldid", old_id, "Use an old version");
   app.add_flag("-r,--render", render, "Output parser rendered html");
-  app.add_flag("-n,--no-fix", no_fix, "Disable fixing");
+  app.add_flag("-s,--silent", silent, "Silent mode");
   app.validate_positionals();
   app.validate_optional_arguments();
 
   CLI11_PARSE(app, argc, argv);
 
-  cerr << "Fetching " << page_name << "..." << endl;
-  string bytes = MWAPI::page_wikitext(page_name);
-  cerr << "Parsing..." << endl;
+  if (silent)
+    cerr.setstate(std::ios_base::failbit);
+
+  cerr << "Fetching " << page_name << "..." << flush;
+
+  string bytes = MWAPI::get_page_content(page_name);
+  cerr << " OK (" << bytes.size() << " bytes)" << endl;
+  cerr << "Parsing..." << flush;
   Wiki::Wikitext wikitext(bytes);
-  Wiki::Blocks ublocks = wikitext.decode();
+  Wiki::Blocks blocks = wikitext.decode();
+  cerr << " OK (" << blocks.size() << " blocks)" << endl;
 
   if (!no_fix)
   {
-    cerr << "Fixing... (" << wikitext.size() << " blocks)" << endl;
+    cerr << "Fixing..." << endl;
     int fix_count = 0;
     for (int i = 0; i < 3; i++)
     {
-      Fixes::space(ublocks, fix_count);
-      Fixes::footnotes(ublocks, fix_count);
-      Fixes::punctuation(ublocks, fix_count);
-      Fixes::punctuation_width(ublocks, fix_count);
+      Fixes::space(blocks, fix_count);
+      Fixes::footnotes(blocks, fix_count);
+      Fixes::punctuation(blocks, fix_count);
+      Fixes::punctuation_width(blocks, fix_count);
     }
 
     if (!fix_count)
     {
-      cerr << "No need to fix." << endl;
+      cerr << "Not needed" << endl;
     }
     else if (fix_count == 1)
     {
-      cerr << "1 fix applied." << endl;
+      cerr << fix_count << " fix applied." << endl;
     }
     else if (fix_count > 1)
     {
       cerr << fix_count << " fixes applied." << endl;
+    }
+
+    if (edit && fix_count > 0)
+    {
+      cerr << "Authenticating..." << flush;
+      MWAPI::populate_csrf_token();
+      cerr << " OK" << endl;
+      cerr << "Pushing changes..." << flush;
+      string revid = MWAPI::edit_page(page_name, wikitext.to_string(), "[[User:SkEy/wikitext-fix|wikitext-fix]]: 维基文本自动修复工具", true);
+      cerr << " OK (Revision id: " << revid << ")" << endl;
     }
   }
   else
@@ -64,12 +83,10 @@ int main(int argc, char *argv[])
     cerr << "Not fixed. (" << wikitext.size() << " blocks)" << endl;
   }
 
-  wikitext = Wiki::Wikitext(ublocks);
+  wikitext = Wiki::Wikitext(blocks);
 
   if (render)
     cout << wikitext.color_html() << endl;
-  else
-    cout << wikitext << endl;
 
   return EXIT_SUCCESS;
 }
