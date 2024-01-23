@@ -69,6 +69,7 @@
     "sstream": "cpp",
     "cctype": "cpp",
     "__locale": "cpp",
-    "ranges": "cpp"
+    "ranges": "cpp",
+    "target": "cpp"
   },
 }

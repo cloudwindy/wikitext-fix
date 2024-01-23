@@ -2,13 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "(gdb) Launch",
+      "name": "Debug Launch",
       "type": "cppdbg",
       "request": "launch",
       // Resolved by CMake Tools:
       "program": "${command:cmake.launchTargetPath}",
       "args": [
-        "乾淨世界"
+        "User:SkEy/沙盒"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

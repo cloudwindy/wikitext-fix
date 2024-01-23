@@ -7,10 +7,11 @@ using std::string;
 using ustring = std::u32string;
 using error = std::runtime_error;
 using namespace WikiParser;
-string html_encode(string data);
 
 namespace Wiki
 {
+  string html_encode(string data);
+
   Wikitext::Wikitext(Blocks ublocks)
   {
     if (ublocks.empty())
@@ -18,18 +19,8 @@ namespace Wiki
 
     parser_blocks.reserve(ublocks.size());
     for (const auto &ublock : ublocks)
-    {
-      if (!ublock.prepend.empty())
-        parser_blocks.push_back({.type = TEXT,
-                                 .value = converter.to_bytes(ublock.prepend)});
-
       parser_blocks.push_back({.type = ublock.type,
                                .value = converter.to_bytes(ublock.value)});
-
-      if (!ublock.append.empty())
-        parser_blocks.push_back({.type = TEXT,
-                                 .value = converter.to_bytes(ublock.append)});
-    }
   }
   Wikitext::Wikitext(string wikitext)
   {
@@ -44,10 +35,8 @@ namespace Wiki
     Blocks ublocks;
     ublocks.reserve(parser_blocks.size());
     for (const auto &block : parser_blocks)
-    {
       ublocks.push_back({.type = block.type,
                          .value = converter.from_bytes(block.value)});
-    }
     return ublocks;
   }
   string Wikitext::to_string() const
@@ -187,34 +176,3 @@ namespace Wiki
     return (os << wikitext.to_string());
   }
 };
-
-string html_encode(string data)
-{
-  string buffer;
-  buffer.reserve(data.size());
-  for (const char &ch : data)
-  {
-    switch (ch)
-    {
-    case '&':
-      buffer.append("&amp;");
-      break;
-    case '\"':
-      buffer.append("&quot;");
-      break;
-    case '\'':
-      buffer.append("&apos;");
-      break;
-    case '<':
-      buffer.append("&lt;");
-      break;
-    case '>':
-      buffer.append("&gt;");
-      break;
-    default:
-      buffer.append(&ch, 1);
-      break;
-    }
-  }
-  return buffer;
-}

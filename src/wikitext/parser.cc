@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <set>
-
 #include <cstring>
 
 #include "wikitext.hh"
@@ -40,6 +39,15 @@ namespace WikiParser
   BlockParser::BlockParser(string wt)
   {
     this->wt = wt;
+  }
+  void BlockParser::set_wikitext(string wt)
+  {
+    this->wt = wt;
+  }
+  void BlockParser::reset()
+  {
+    this->wt.clear();
+    this->blocks.clear();
   }
   Blocks BlockParser::get_blocks() const
   {

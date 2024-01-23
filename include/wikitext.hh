@@ -30,9 +30,11 @@ namespace WikiParser
   {
   public:
     enum Token : int;
-    BlockParser(std::string wikitext);
-    void parse();
+    BlockParser(std::string wt);
+    void set_wikitext(std::string wt);
+    void reset();
     Blocks get_blocks() const;
+    void parse();
 
   private:
     Token next_token();
@@ -82,8 +84,6 @@ namespace Wiki
   {
     BlockType type;
     std::u32string value;
-    std::u32string prepend;
-    std::u32string append;
   };
   using Blocks = std::vector<Block>;
   class Wikitext
@@ -99,6 +99,5 @@ namespace Wiki
 
   private:
     WikiParser::Blocks parser_blocks;
-    std::string redirect_to;
   };
 };

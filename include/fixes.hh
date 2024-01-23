@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include "wikitext.hh"
 
 namespace Fixes

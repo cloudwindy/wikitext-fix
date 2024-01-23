@@ -12,6 +12,8 @@ using error = std::runtime_error;
 
 namespace MWAPI
 {
+  string api_base_url("https://zh.wikipedia.org/w/api.php");
+
   static string get_page_wikitext(const string page_name);
 
   string page_wikitext(string page_name)
@@ -34,7 +36,7 @@ namespace MWAPI
 
   static string get_page_wikitext(const string page_name)
   {
-    auto resp = cpr::Get(cpr::Url(WIKIPEDIA_API_URL),
+    auto resp = cpr::Get(cpr::Url(api_base_url),
                          cpr::Parameters{
                              {"action", "parse"},
                              {"redirects", "true"},
