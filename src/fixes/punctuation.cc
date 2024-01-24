@@ -8,7 +8,7 @@ namespace Fixes
     for (const auto &&[blk_i, blk] :
          blocks | filter(is_blk_visible) | enumerate)
     {
-      const static ustring puncs = U"，。、“”【】！？『』〖〗：；「」・｜（）";
+      constexpr auto puncs = U"，。、“”【】！？『』〖〗：；「」・｜（）"sv;
 
       ustring &str = blk.value;
       for (size_t pos = 0; pos < str.size(); pos++)

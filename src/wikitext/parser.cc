@@ -1,3 +1,4 @@
+#include <array>
 #include <algorithm>
 #include <set>
 #include <cstring>
@@ -16,6 +17,8 @@ using std::string;
 
 namespace WikiParser
 {
+  using namespace std::string_view_literals;
+
   enum BlockParser::Token : int
   {
     CHAR,
@@ -294,13 +297,14 @@ namespace WikiParser
     if (s.in_html_tag)
     {
       // HTML void elements: https://html.spec.whatwg.org/multipage/syntax.html#void-elements
-      const static std::set<string> void_elements = {
-          "area", "base", "br", "col", "embed", "hr",
-          "img", "input", "link", "meta", "source", "track",
-          "wbr"};
-      const auto it = std::find_if(void_elements.begin(), void_elements.end(),
-                                   [buf = buf](const string &element)
-                                   { return buf.starts_with(element); });
+      constexpr std::array void_elements{
+          "area"sv, "base"sv, "br"sv, "col"sv, "embed"sv, "hr"sv,
+          "img"sv, "input"sv, "link"sv, "meta"sv, "source"sv, "track"sv,
+          "wbr"sv};
+      const auto it = std::ranges::find_if(
+          void_elements,
+          [buf = buf](std::string_view element)
+          { return buf.starts_with(element); });
       if (!s.html_level)
         make_block(HTML_TAG);
 

@@ -10,8 +10,8 @@ namespace Fixes
       if (!is_blk_text(blk) || !is_blk_ref(blk_next))
         continue;
 
-      const static ustring puncs = U"，。、！？；";
-      const size_t punc_i = puncs.find(blk.value.back());
+      constexpr auto puncs = U"，。、！？；"sv;
+      size_t punc_i = puncs.find(blk.value.back());
       if (punc_i == string::npos)
         continue;
 
@@ -20,10 +20,10 @@ namespace Fixes
       if (tblk_next_it == blocks.end())
         break;
       Wiki::Block &tblk_next = *tblk_next_it;
-      const size_t tblk_next_i = std::distance(blocks.begin(), tblk_next_it);
+      size_t tblk_next_i = std::distance(blocks.begin(), tblk_next_it);
 
       // Find stop marker.
-      if (ustring(U"\n”」』").find(tblk_next.value.front()) != string::npos)
+      if (U"\n”」』"sv.find(tblk_next.value.front()) != string::npos)
         continue;
 
       // Remove period.

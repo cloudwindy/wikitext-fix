@@ -9,6 +9,7 @@
 namespace Fixes
 {
   using namespace std::views;
+  using namespace std::string_view_literals;
 
   using std::cout, std::cerr, std::endl;
   using std::string;

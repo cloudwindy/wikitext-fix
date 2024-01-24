@@ -10,9 +10,9 @@ namespace Fixes
       ustring &str = blk.value;
       for (const auto &&[pos, c] : str | enumerate)
       {
-        const static ustring puncs_en = U".,()＋．　丶";
-        const static ustring puncs_zh = U"。，（）+. 、";
-        int flag = puncs_en.find(c);
+        constexpr auto puncs_en = U".,()＋．　丶"sv;
+        constexpr auto puncs_zh = U"。，（）+. 、"sv;
+        size_t flag = puncs_en.find(c);
         if (flag == string::npos)
           continue;
 
