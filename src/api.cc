@@ -12,26 +12,8 @@ using error = std::runtime_error;
 
 namespace MWAPI
 {
-  Json::Value parse(const string text)
-  {
-    static Json::Reader json;
-    Json::Value root;
-    if (!json.parse(text, root))
-    {
-      throw error("invalid json");
-    }
-    if (root["errors"])
-    {
-      std::ostringstream err;
-      err << "MediaWiki returned \"" << root["errors"][0]["text"].asString() << '"';
-      throw error(err.str());
-    }
-    return root;
-  }
-
   using Dict = vector<std::pair<string, string>>;
-
-  Dict common_params{
+  const static Dict common_params{
       {"maxlag", "5"},
       {"format", "json"},
       {"formatversion", "2"},
@@ -40,13 +22,9 @@ namespace MWAPI
       {"errorformat", "plaintext"},
       {"errorsuselocal", "true"}};
 
+  static Json::Value json_parse(const string text);
   template <class T>
-  T append_common_params(T pairs)
-  {
-    for (const auto &param : common_params)
-      pairs.Add({param.first, param.second});
-    return pairs;
-  }
+  static T append_common_params(T pairs);
 
   API::API(string base_url, string user_agent)
   {
@@ -69,7 +47,7 @@ namespace MWAPI
         {"redirects", "true"}});
     auto resp = sess.Get();
 
-    return parse(resp.text)["parse"]["wikitext"].asString();
+    return json_parse(resp.text)["parse"]["wikitext"].asString();
   }
 
   string API::login(string username, string password)
@@ -83,7 +61,7 @@ namespace MWAPI
         {"lgpassword", password},
         {"lgtoken", login_token}});
     auto resp = sess.Post();
-    auto res = parse(resp.text);
+    auto res = json_parse(resp.text);
     if (res["login"]["result"] != "Success")
     {
       std::ostringstream err;
@@ -108,7 +86,7 @@ namespace MWAPI
         {"minor", minor ? "true" : ""},
         {"token", csrf_token}});
     auto resp = sess.Post();
-    auto res = parse(resp.text);
+    auto res = json_parse(resp.text);
     if (res["edit"]["nochange"])
     {
       throw error("page not changed");
@@ -127,7 +105,7 @@ namespace MWAPI
         {"meta", "tokens"}});
     auto resp = sess.Get();
 
-    csrf_token = parse(resp.text)["query"]["tokens"]["csrftoken"].asString();
+    csrf_token = json_parse(resp.text)["query"]["tokens"]["csrftoken"].asString();
   }
 
   void API::populate_login_token()
@@ -141,6 +119,31 @@ namespace MWAPI
         {"type", "login"}});
     auto resp = sess.Get();
 
-    login_token = parse(resp.text)["query"]["tokens"]["logintoken"].asString();
+    login_token = json_parse(resp.text)["query"]["tokens"]["logintoken"].asString();
+  }
+
+  static Json::Value json_parse(const string text)
+  {
+    static Json::Reader json;
+    Json::Value root;
+    if (!json.parse(text, root))
+    {
+      throw error("invalid json");
+    }
+    if (root["errors"])
+    {
+      std::ostringstream err;
+      err << "MediaWiki returned \"" << root["errors"][0]["text"].asString() << '"';
+      throw error(err.str());
+    }
+    return root;
+  }
+
+  template <class T>
+  static T append_common_params(T pairs)
+  {
+    for (const auto &param : common_params)
+      pairs.Add({param.first, param.second});
+    return pairs;
   }
 } // namespace MWAPI
