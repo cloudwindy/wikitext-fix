@@ -8,11 +8,14 @@ project(WIKIFIX)
 
 include(cmake/CPM.cmake)
 CPMAddPackage("gh:CLIUtils/CLI11@2.3.2")
-CPMAddPackage("gh:libcpr/cpr#1.10.5")
+CPMAddPackage("gh:libcpr/cpr#master")
 CPMAddPackage("gh:open-source-parsers/jsoncpp#1.9.5")
 
 include_directories(include)
-file(GLOB_RECURSE WIKIFIX_SRC *.cc)
-add_executable(wikifix ${WIKIFIX_SRC})
-set_target_properties(wikifix PROPERTIES CXX_STANDARD 23)
-target_link_libraries(wikifix PRIVATE cpr::cpr jsoncpp_lib CLI11::CLI11)
+file(GLOB_RECURSE WIKIFIX_SRC "*.cc")
+add_executable(wikifix "${WIKIFIX_SRC}")
+set_target_properties(wikifix PROPERTIES CXX_STANDARD "23")
+target_link_libraries(wikifix PRIVATE
+  cpr::cpr
+  jsoncpp_lib
+  CLI11::CLI11)
