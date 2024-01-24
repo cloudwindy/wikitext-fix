@@ -12,11 +12,7 @@ using error = std::runtime_error;
 
 namespace MWAPI
 {
-  string api_base_url("https://zh.wikipedia.org/w/api.php");
-  string api_user_agent("wikitext-bot-fix/1.0");
-  string api_csrf_token("");
-
-  static Json::Value parse(const string text)
+  Json::Value parse(const string text)
   {
     static Json::Reader json;
     Json::Value root;
@@ -24,9 +20,11 @@ namespace MWAPI
     {
       throw error("invalid json");
     }
-    if (root["error"])
+    if (root["errors"])
     {
-      throw error("MediaWiki error: " + root["error"]["info"].asString());
+      std::ostringstream err;
+      err << "MediaWiki returned \"" << root["errors"][0]["text"].asString() << '"';
+      throw error(err.str());
     }
     return root;
   }
@@ -36,61 +34,113 @@ namespace MWAPI
   Dict common_params{
       {"maxlag", "5"},
       {"format", "json"},
-      {"formatversion", "2"}};
+      {"formatversion", "2"},
+      {"uselang", "zh"},
+      {"variant", "zh-cn"},
+      {"errorformat", "plaintext"},
+      {"errorsuselocal", "true"}};
 
-  template <typename T>
-  T &apply_common_params(T &pairs)
+  template <class T>
+  T append_common_params(T pairs)
   {
     for (const auto &param : common_params)
       pairs.Add({param.first, param.second});
     return pairs;
   }
 
-  void populate_csrf_token()
+  API::API(string base_url, string user_agent)
   {
-    cpr::Parameters params{
-        {"action", "query"},
-        {"meta", "tokens"}};
-
-    auto resp = cpr::Get(
-        cpr::Url(api_base_url),
-        apply_common_params(params),
-        cpr::UserAgent(api_user_agent));
-
-    api_csrf_token = parse(resp.text)["query"]["tokens"]["csrftoken"].asString();
+    sess.SetUrl(base_url);
+    sess.SetUserAgent(user_agent);
   }
 
-  string get_page_content(string title)
+  template <typename T>
+  void API::sess_set_params(T params)
   {
-    cpr::Parameters params{
+    sess.SetOption(append_common_params(params));
+  }
+
+  string API::get_page_content(string title)
+  {
+    sess_set_params(cpr::Parameters{
         {"action", "parse"},
         {"page", title},
         {"prop", "wikitext"},
-        {"redirects", "true"}};
-
-    auto resp = cpr::Get(
-        cpr::Url(api_base_url),
-        apply_common_params(params),
-        cpr::UserAgent(api_user_agent));
+        {"redirects", "true"}});
+    auto resp = sess.Get();
 
     return parse(resp.text)["parse"]["wikitext"].asString();
   }
-  string edit_page(string title, string content, string summary, bool minor)
+
+  string API::login(string username, string password)
   {
-    cpr::Payload payload{
+    populate_login_token();
+
+    sess.SetParameters({});
+    sess_set_params(cpr::Payload{
+        {"action", "login"},
+        {"lgname", username},
+        {"lgpassword", password},
+        {"lgtoken", login_token}});
+    auto resp = sess.Post();
+    auto res = parse(resp.text);
+    if (res["login"]["result"] != "Success")
+    {
+      std::ostringstream err;
+      err << "MediaWiki login message: \"" << res["login"]["reason"]["text"].asString() << '"';
+      throw error(err.str());
+    }
+
+    return res["login"]["lgusername"].asString();
+  }
+
+  string API::edit_page(string title, string content, string summary, bool minor)
+  {
+    populate_csrf_token();
+
+    sess.SetParameters({});
+    sess_set_params(cpr::Payload{
         {"action", "edit"},
         {"title", title},
         {"text", content},
         {"summary", summary},
         {"bot", "true"},
         {"minor", minor ? "true" : ""},
-        {"token", api_csrf_token}};
+        {"token", csrf_token}});
+    auto resp = sess.Post();
+    auto res = parse(resp.text);
+    if (res["edit"]["nochange"])
+    {
+      throw error("page not changed");
+    }
 
-    auto resp = cpr::Post(
-        cpr::Url(api_base_url),
-        apply_common_params(payload),
-        cpr::UserAgent(api_user_agent));
+    return res["edit"]["newrevid"].asString();
+  }
 
-    return parse(resp.text)["edit"]["newrevid"].asString();
+  void API::populate_csrf_token()
+  {
+    if (!csrf_token.empty())
+      return;
+
+    sess_set_params(cpr::Parameters{
+        {"action", "query"},
+        {"meta", "tokens"}});
+    auto resp = sess.Get();
+
+    csrf_token = parse(resp.text)["query"]["tokens"]["csrftoken"].asString();
+  }
+
+  void API::populate_login_token()
+  {
+    if (!login_token.empty())
+      return;
+
+    sess_set_params(cpr::Parameters{
+        {"action", "query"},
+        {"meta", "tokens"},
+        {"type", "login"}});
+    auto resp = sess.Get();
+
+    login_token = parse(resp.text)["query"]["tokens"]["logintoken"].asString();
   }
 } // namespace MWAPI

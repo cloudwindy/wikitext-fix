@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 {
   CLI::App app;
 
-  string page_name, output_path;
+  string page_name, output_path, login, password;
   int old_id = 0;
   bool edit = false, render = false, no_fix = false, silent = false;
   app.add_option("pos", page_name, "Page title name")->required();
@@ -26,6 +26,8 @@ int main(int argc, char *argv[])
   app.add_option("-O,--oldid", old_id, "Use an old version");
   app.add_flag("-r,--render", render, "Output parser rendered html");
   app.add_flag("-s,--silent", silent, "Silent mode");
+  app.add_option("-l,--login", login, "Username for editing");
+  app.add_option("-p,--password", password, "Password for editing");
   app.validate_positionals();
   app.validate_optional_arguments();
 
@@ -36,8 +38,9 @@ int main(int argc, char *argv[])
 
   cerr << "Fetching " << page_name << "..." << flush;
 
-  string bytes = MWAPI::get_page_content(page_name);
-  cerr << " OK (" << bytes.size() << " bytes)" << endl;
+  MWAPI::API api;
+  string bytes = api.get_page_content(page_name);
+  cerr << " OK (Received " << bytes.size() << " bytes)" << endl;
   cerr << "Parsing..." << flush;
   Wiki::Wikitext wikitext(bytes);
   Wiki::Blocks blocks = wikitext.decode();
@@ -68,22 +71,18 @@ int main(int argc, char *argv[])
       cerr << fix_count << " fixes applied." << endl;
     }
 
+    wikitext = Wiki::Wikitext(blocks);
+
     if (edit && fix_count > 0)
     {
       cerr << "Authenticating..." << flush;
-      MWAPI::populate_csrf_token();
-      cerr << " OK" << endl;
+      string name = api.login(login, password);
+      cerr << " OK (Logged in as " << name << ")" << endl;
       cerr << "Pushing changes..." << flush;
-      string revid = MWAPI::edit_page(page_name, wikitext.to_string(), "[[User:SkEy/wikitext-fix|wikitext-fix]]: 维基文本自动修复工具", true);
+      string revid = api.edit_page(page_name, wikitext.to_string(), "[[User:SkEy/wikitext-fix|wikitext-fix]]: 维基文本自动修复工具", true);
       cerr << " OK (Revision id: " << revid << ")" << endl;
     }
   }
-  else
-  {
-    cerr << "Not fixed. (" << wikitext.size() << " blocks)" << endl;
-  }
-
-  wikitext = Wiki::Wikitext(blocks);
 
   if (render)
     cout << wikitext.color_html() << endl;
