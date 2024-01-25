@@ -51,6 +51,8 @@ namespace Wiki
       string end;
       switch (block.type)
       {
+      case TEXT:
+        break;
       case TEMPLATE:
         begin = "{{";
         end = "}}";
@@ -87,6 +89,8 @@ namespace Wiki
         begin = "</";
         end = ">";
         break;
+      case HTML_BODY:
+        break;
       }
       buf += begin + block.value + end;
     }
@@ -104,6 +108,8 @@ namespace Wiki
       string end;
       switch (block.type)
       {
+      case TEXT:
+        break;
       case TEMPLATE:
         begin = "<span class=\"tpl\">{{";
         end = "}}</span>";
