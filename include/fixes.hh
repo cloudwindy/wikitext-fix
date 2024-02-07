@@ -4,8 +4,9 @@
 
 namespace Fixes
 {
-  void footnotes(Wiki::Blocks &str, int &fix_count);
-  void punctuation(Wiki::Blocks &str, int &fix_count);
-  void punctuation_width(Wiki::Blocks &str, int &fix_count);
-  void space(Wiki::Blocks &str, int &fix_count);
+  void footnote_position(Wiki::Blocks &str, int &fix_count);
+  void punc_duplicate(Wiki::Blocks &str, int &fix_count);
+  void punc_wrong_width(Wiki::Blocks &str, int &fix_count);
+  
+  void space_unnecessary(Wiki::Blocks &str, int &fix_count);
 }

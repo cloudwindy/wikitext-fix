@@ -19,8 +19,10 @@ namespace MWAPI
     cpr::Session sess;
     std::string csrf_token;
     std::string login_token;
-    template <class T>
+    template <typename T>
     void sess_set_params(T);
+    template <typename T>
+    void sess_clear_params();
     void populate_csrf_token();
     void populate_login_token();
   };

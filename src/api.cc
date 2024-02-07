@@ -35,17 +35,26 @@ namespace MWAPI
   template <typename T>
   void API::sess_set_params(T params)
   {
-    sess.SetOption(append_common_params(params));
+    for (const auto &param : common_params)
+      params.Add({param.first, param.second});
+    sess.SetOption(params);
+  }
+  template <typename T>
+  void API::sess_clear_params()
+  {
+    T t{};
+    sess.SetOption(t);
   }
 
   string API::get_page_content(string title)
   {
-    sess_set_params(cpr::Parameters{
+    sess_set_params(cpr::Payload{
         {"action", "parse"},
         {"page", title},
         {"prop", "wikitext"},
         {"redirects", "true"}});
     auto resp = sess.Get();
+    sess_clear_params<cpr::Payload>();
 
     return json_parse(resp.text)["parse"]["wikitext"].asString();
   }
@@ -54,13 +63,14 @@ namespace MWAPI
   {
     populate_login_token();
 
-    sess.SetParameters({});
     sess_set_params(cpr::Payload{
         {"action", "login"},
         {"lgname", username},
         {"lgpassword", password},
         {"lgtoken", login_token}});
     auto resp = sess.Post();
+    sess_clear_params<cpr::Payload>();
+
     auto res = json_parse(resp.text);
     if (res["login"]["result"] != "Success")
     {
@@ -76,7 +86,6 @@ namespace MWAPI
   {
     populate_csrf_token();
 
-    sess.SetParameters({});
     sess_set_params(cpr::Payload{
         {"action", "edit"},
         {"title", title},
@@ -86,6 +95,8 @@ namespace MWAPI
         {"minor", minor ? "true" : ""},
         {"token", csrf_token}});
     auto resp = sess.Post();
+    sess_clear_params<cpr::Payload>();
+
     auto res = json_parse(resp.text);
     if (res["edit"]["nochange"])
     {
@@ -104,6 +115,7 @@ namespace MWAPI
         {"action", "query"},
         {"meta", "tokens"}});
     auto resp = sess.Get();
+    sess_clear_params<cpr::Parameters>();
 
     csrf_token = json_parse(resp.text)["query"]["tokens"]["csrftoken"].asString();
   }
@@ -118,6 +130,7 @@ namespace MWAPI
         {"meta", "tokens"},
         {"type", "login"}});
     auto resp = sess.Get();
+    sess_clear_params<cpr::Parameters>();
 
     login_token = json_parse(resp.text)["query"]["tokens"]["logintoken"].asString();
   }
@@ -137,13 +150,5 @@ namespace MWAPI
       throw error(err.str());
     }
     return root;
-  }
-
-  template <class T>
-  static T append_common_params(T pairs)
-  {
-    for (const auto &param : common_params)
-      pairs.Add({param.first, param.second});
-    return pairs;
   }
 } // namespace MWAPI

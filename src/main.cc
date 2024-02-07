@@ -52,10 +52,10 @@ int main(int argc, char *argv[])
     int fix_count = 0;
     for (int i = 0; i < 3; i++)
     {
-      Fixes::space(blocks, fix_count);
-      Fixes::footnotes(blocks, fix_count);
-      Fixes::punctuation(blocks, fix_count);
-      Fixes::punctuation_width(blocks, fix_count);
+      Fixes::space_unnecessary(blocks, fix_count);
+      Fixes::footnote_position(blocks, fix_count);
+      Fixes::punc_duplicate(blocks, fix_count);
+      Fixes::punc_wrong_width(blocks, fix_count);
     }
 
     if (!fix_count)

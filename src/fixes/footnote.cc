@@ -2,7 +2,7 @@
 
 namespace Fixes
 {
-  void footnotes(Wiki::Blocks &blocks, int &fix_count)
+  void footnote_position(Wiki::Blocks &blocks, int &fix_count)
   {
     for (size_t blk_i = 0; blk_i < blocks.size() - 1; blk_i++)
     {

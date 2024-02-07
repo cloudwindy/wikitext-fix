@@ -2,7 +2,7 @@
 
 namespace Fixes
 {
-  void space(Wiki::Blocks &blocks, int &fix_count)
+  void space_unnecessary(Wiki::Blocks &blocks, int &fix_count)
   {
     for (const auto &&[blk_i, blk] :
          blocks | filter(is_blk_text) | enumerate)
