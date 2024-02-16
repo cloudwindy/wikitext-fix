@@ -4,7 +4,7 @@
 #include <ranges>
 
 #include "utf-32.hh"
-#include "fixes.hh"
+#include "fix.hh"
 
 namespace Fixes
 {

@@ -1,6 +1,7 @@
 {
   "files.associations": {
     "*.proto": "proto3",
+    "*.ktoolbox": "json",
     "array": "cpp",
     "atomic": "cpp",
     "bit": "cpp",
@@ -70,6 +71,7 @@
     "cctype": "cpp",
     "__locale": "cpp",
     "ranges": "cpp",
-    "target": "cpp"
+    "target": "cpp",
+    "unordered_set": "cpp"
   },
 }

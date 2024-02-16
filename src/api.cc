@@ -53,7 +53,7 @@ namespace MWAPI
         {"page", title},
         {"prop", "wikitext"},
         {"redirects", "true"}});
-    auto resp = sess.Get();
+    auto resp = sess.Post();
     sess_clear_params<cpr::Payload>();
 
     return json_parse(resp.text)["parse"]["wikitext"].asString();
@@ -141,7 +141,9 @@ namespace MWAPI
     Json::Value root;
     if (!json.parse(text, root))
     {
-      throw error("invalid json");
+      std::ostringstream err;
+      err << "invalid json size=" << text.size() << " text=\"" << text << '"';
+      throw error(err.str());
     }
     if (root["errors"])
     {

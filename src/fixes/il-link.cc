@@ -1,9 +1,11 @@
 #include "fixes_internal.hh"
 
-namespace Fixes
-{
-  void illink(Wiki::Blocks &blocks, int &fix_count)
-  {
-    
-  }
-}
+// void Fix::illink(Wiki::Blocks &blocks, int &fix_count)
+// {
+//   for (const auto &&[blk_i, blk] :
+//        blocks | enumerate)
+//   {
+//     if (blk.type == WikiParser::TEMPLATE && blk.value.starts_with(U"Translating"))
+
+//   }
+// }

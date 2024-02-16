@@ -5,7 +5,7 @@
 
 #include "api.hh"
 #include "wikitext.hh"
-#include "fixes.hh"
+#include "fix.hh"
 #include "utf-32.hh"
 
 using std::cout, std::cerr, std::endl, std::flush;
@@ -49,31 +49,31 @@ int main(int argc, char *argv[])
   if (!no_fix)
   {
     cerr << "Fixing..." << endl;
-    int fix_count = 0;
+    Fix fix(blocks);
     for (int i = 0; i < 3; i++)
     {
-      Fixes::space_unnecessary(blocks, fix_count);
-      Fixes::footnote_position(blocks, fix_count);
-      Fixes::punc_duplicate(blocks, fix_count);
-      Fixes::punc_wrong_width(blocks, fix_count);
+      fix.space_unnecessary();
+      fix.footnote_position();
+      fix.punc_duplicate();
+      fix.punc_wrong_width();
     }
 
-    if (!fix_count)
+    if (!fix.count)
     {
       cerr << "Not needed" << endl;
     }
-    else if (fix_count == 1)
+    else if (fix.count == 1)
     {
-      cerr << fix_count << " fix applied." << endl;
+      cerr << fix.count << " fix applied." << endl;
     }
-    else if (fix_count > 1)
+    else if (fix.count > 1)
     {
-      cerr << fix_count << " fixes applied." << endl;
+      cerr << fix.count << " fixes applied." << endl;
     }
 
     wikitext = Wiki::Wikitext(blocks);
 
-    if (edit && fix_count > 0)
+    if (edit && fix.count > 0)
     {
       cerr << "Authenticating..." << flush;
       string name = api.login(login, password);
@@ -86,6 +86,8 @@ int main(int argc, char *argv[])
 
   if (render)
     cout << wikitext.color_html() << endl;
+  else if (!edit)
+    cout << wikitext << endl;
 
   return EXIT_SUCCESS;
 }
