@@ -20,9 +20,17 @@ namespace WikiParser
     HTML_CLOSE_TAG,        // </ref>
     HTML_SELF_CLOSING_TAG, // <ref />
   };
+  enum class TextStyle
+  {
+    NONE,
+    ITALIC,      // ''italic text''
+    BOLD,        // '''bold text'''
+    ITALIC_BOLD, // '''''italic bold text'''''
+  };
   struct Block
   {
     BlockType type;
+    TextStyle style;
     std::string value;
   };
   using Blocks = std::vector<Block>;
@@ -54,7 +62,8 @@ namespace WikiParser
     void html_tag_end();
     void html_close_tag_begin();
     void html_close_tag_end();
-    void make_block(BlockType type, bool allow_empty = false);
+    void make_text_block();
+    void make_block(BlockType type, TextStyle style = TextStyle::NONE, bool allow_empty = false);
     void update_status();
     void update_buffer();
     struct state
@@ -68,6 +77,8 @@ namespace WikiParser
       unsigned int in_conv_tag : 1;
       unsigned int in_html_tag : 1;
       unsigned int in_html_close_tag : 1;
+      unsigned int style_italic : 1;
+      unsigned int style_bold : 1;
       unsigned int literal : 1;
     };
     state s = {0};
@@ -75,14 +86,16 @@ namespace WikiParser
     std::string buf;
     Blocks blocks;
   };
-};
+}
 
 namespace Wiki
 {
   using WikiParser::BlockType;
+  using WikiParser::TextStyle;
   struct Block
   {
     BlockType type;
+    TextStyle style;
     std::u32string value;
   };
   using Blocks = std::vector<Block>;
@@ -100,4 +113,4 @@ namespace Wiki
   private:
     WikiParser::Blocks parser_blocks;
   };
-};
+}

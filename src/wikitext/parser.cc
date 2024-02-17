@@ -22,6 +22,8 @@ namespace WikiParser
   enum BlockParser::Token : int
   {
     CHAR,
+    BOLD_STYLE_MARKER,    // '''
+    ITALIC_STYLE_MARKER,  // ''
     TEMPLATE_BEGIN,       // {{
     TEMPLATE_END,         // }}
     TABLE_BEGIN,          // {|
@@ -39,13 +41,15 @@ namespace WikiParser
     HTML_TAG_BEGIN,       // <
     HTML_TAG_END,         // >
   };
-  BlockParser::BlockParser(string wt) : wt(std::move(wt)){};
+
+  BlockParser::BlockParser(string wt) : wt(wt){};
   void BlockParser::set_wikitext(string wt)
   {
-    this->wt = std::move(wt);
+    this->wt = wt;
   }
   void BlockParser::reset()
   {
+    s = {0};
     wt.clear();
     blocks.clear();
   }
@@ -61,13 +65,25 @@ namespace WikiParser
       update_buffer();
 
       if (wt.empty())
+      {
+        // Don't forget last text block.
+        make_text_block();
         break;
+      }
 
       switch (next_token())
       {
       case CHAR:
         buf.push_back(wt.at(0));
         wt.erase(0, 1);
+        break;
+      case ITALIC_STYLE_MARKER:
+        make_text_block();
+        s.style_italic = ~s.style_italic;
+        break;
+      case BOLD_STYLE_MARKER:
+        make_text_block();
+        s.style_bold = ~s.style_bold;
         break;
       case TEMPLATE_BEGIN:
         template_begin();
@@ -119,7 +135,6 @@ namespace WikiParser
         break;
       }
     }
-    make_block(TEXT);
   }
   // {{
   void BlockParser::template_begin()
@@ -131,7 +146,7 @@ namespace WikiParser
         s.template_level++;
       return;
     }
-    make_block(TEXT);
+    make_text_block();
     s.template_level++;
   }
   // }}
@@ -155,7 +170,7 @@ namespace WikiParser
       buf.append("{|");
       return;
     }
-    make_block(TEXT);
+    make_text_block();
     s.in_table = true;
   }
   // |}
@@ -189,7 +204,7 @@ namespace WikiParser
         s.link_level++;
       return;
     }
-    make_block(TEXT);
+    make_text_block();
     s.link_level++;
   }
   // ]]
@@ -213,7 +228,7 @@ namespace WikiParser
       buf.append("[");
       return;
     }
-    make_block(TEXT);
+    make_text_block();
     s.in_ext_link = true;
   }
   // ]
@@ -235,7 +250,7 @@ namespace WikiParser
       buf.append("<!--");
       return;
     }
-    make_block(TEXT);
+    make_text_block();
     s.in_comment = true;
   }
   // -->
@@ -257,7 +272,7 @@ namespace WikiParser
       buf.append("-{");
       return;
     }
-    make_block(TEXT);
+    make_text_block();
     s.in_conv_tag = true;
   }
   // }-
@@ -269,7 +284,7 @@ namespace WikiParser
       return;
     }
     s.in_conv_tag = false;
-    make_block(CONV_TAG, true);
+    make_block(CONV_TAG, TextStyle::NONE, true);
   }
   // <tag
   // ^
@@ -282,7 +297,7 @@ namespace WikiParser
         s.in_html_tag = true;
       return;
     }
-    make_block(TEXT);
+    make_text_block();
     s.in_html_tag = true;
   }
   // tag>
@@ -353,39 +368,48 @@ namespace WikiParser
     s.in_html_tag = false;
     make_block(HTML_SELF_CLOSING_TAG);
   }
-  void BlockParser::make_block(BlockType type, bool allow_empty)
+  void BlockParser::make_text_block()
+  {
+    TextStyle style = TextStyle::NONE;
+    if (s.style_bold && s.style_italic)
+      style = TextStyle::ITALIC_BOLD;
+    else if (s.style_bold)
+      style = TextStyle::BOLD;
+    else if (s.style_italic)
+      style = TextStyle::ITALIC;
+    make_block(TEXT, style);
+  }
+  void BlockParser::make_block(BlockType type, TextStyle style, bool allow_empty)
   {
     update_status();
-    if ((!buf.empty() || allow_empty) && (type != TEXT || !s.literal))
+    // Certain conditions must be met when making a block:
+    // 1. Buffer isn't empty unless allow_empty.
+    // 2. Not literal unless not a TEXT block.
+    if ((!buf.empty() || allow_empty) && (!s.literal || type != TEXT))
     {
-      blocks.push_back({.type = type, .value = std::move(buf)});
+      blocks.push_back({.type = type, .style = style, .value = std::move(buf)});
     }
   }
   void BlockParser::update_status()
   {
     s.literal = s.template_level ||
+                s.link_level ||
+                s.html_level ||
                 s.in_table ||
                 s.in_comment ||
-                s.link_level ||
                 s.in_ext_link ||
                 s.in_conv_tag ||
                 s.in_html_tag ||
-                s.in_html_close_tag ||
-                s.html_level;
+                s.in_html_close_tag;
   }
   void BlockParser::update_buffer()
   {
     size_t text_len = 0;
     for (const char &ch : wt)
     {
-      if (ch != '{' && ch != '}' && ch != '[' && ch != ']' && ch != '|' && ch != '<' && ch != '>' && ch != '/' && ch != '-')
-      {
-        text_len++;
-      }
-      else
-      {
+      if (ch == '{' || ch == '}' || ch == '[' || ch == ']' || ch == '|' || ch == '<' || ch == '>' || ch == '/' || ch == '-' || ch == '\'' || ch == '!')
         break;
-      }
+      text_len++;
     }
     if (text_len)
     {
@@ -395,10 +419,6 @@ namespace WikiParser
   }
   BlockParser::Token BlockParser::next_token()
   {
-    if (wt.starts_with("==\n"))
-    {
-      return CHAR;
-    }
     const char *c = wt.c_str();
     MATCH_BEGIN(wt, c, "{{", TEMPLATE_BEGIN);
     NEXT(wt, c, "}}", TEMPLATE_END);
@@ -408,14 +428,16 @@ namespace WikiParser
     NEXT(wt, c, "|}", TABLE_END);
     NEXT(wt, c, "[", EXT_LINK_BEGIN);
     NEXT(wt, c, "]", EXT_LINK_END);
-    NEXT(wt, c, "<!--", COMMENT_BEGIN);
-    NEXT(wt, c, "-->", COMMENT_END);
     NEXT(wt, c, "-{", CONV_TAG_BEGIN);
     NEXT(wt, c, "}-", CONV_TAG_END);
     NEXT(wt, c, "</", HTML_CLOSE_TAG_BEGIN);
     NEXT(wt, c, "/>", HTML_CLOSE_TAG_END);
     NEXT(wt, c, "<", HTML_TAG_BEGIN);
     NEXT(wt, c, ">", HTML_TAG_END);
+    NEXT(wt, c, "'''", BOLD_STYLE_MARKER);
+    NEXT(wt, c, "''", ITALIC_STYLE_MARKER);
+    NEXT(wt, c, "<!--", COMMENT_BEGIN);
+    NEXT(wt, c, "-->", COMMENT_END);
     MATCH_END(CHAR);
   }
 }

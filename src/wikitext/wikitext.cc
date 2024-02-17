@@ -19,8 +19,11 @@ namespace Wiki
 
     parser_blocks.reserve(ublocks.size());
     for (const auto &ublock : ublocks)
-      parser_blocks.push_back({.type = ublock.type,
-                               .value = converter.to_bytes(ublock.value)});
+      parser_blocks.push_back({
+          .type = ublock.type,
+          .style = ublock.style,
+          .value = converter.to_bytes(ublock.value),
+      });
   }
   Wikitext::Wikitext(string wikitext)
   {
@@ -35,8 +38,11 @@ namespace Wiki
     Blocks ublocks;
     ublocks.reserve(parser_blocks.size());
     for (const auto &block : parser_blocks)
-      ublocks.push_back({.type = block.type,
-                         .value = converter.from_bytes(block.value)});
+      ublocks.push_back({
+          .type = block.type,
+          .style = block.style,
+          .value = converter.from_bytes(block.value),
+      });
     return ublocks;
   }
   string Wikitext::to_string() const
@@ -52,6 +58,18 @@ namespace Wiki
       switch (block.type)
       {
       case TEXT:
+        switch (block.style)
+        {
+        case TextStyle::ITALIC_BOLD:
+          begin = end = "'''''";
+          break;
+        case TextStyle::BOLD:
+          begin = end = "'''";
+          break;
+        case TextStyle::ITALIC:
+          begin = end = "''";
+          break;
+        }
         break;
       case TEMPLATE:
         begin = "{{";
@@ -109,6 +127,21 @@ namespace Wiki
       switch (block.type)
       {
       case TEXT:
+        switch (block.style)
+        {
+        case TextStyle::ITALIC_BOLD:
+          begin = "<b><i>'''''";
+          end = "'''''</i></b>";
+          break;
+        case TextStyle::BOLD:
+          begin = "<b>'''";
+          end = "'''</b>";
+          break;
+        case TextStyle::ITALIC:
+          begin = "<i>''";
+          end = "''</i>";
+          break;
+        }
         break;
       case TEMPLATE:
         begin = "<span class=\"tpl\">{{";
@@ -171,7 +204,7 @@ namespace Wiki
       background-color: #dbe7ff;
     }
     )";
-    return "<!DOCTYPE html><html lang=\"zh-cn\"><body>" + buf + "<style>" + css + "</style></body></html>";
+    return "<!DOCTYPE html><html lang=\"zh-cn\"><head><title>Wikitext::color_html Output</title><style>" + css + "</style></head><body>" + buf + "</body></html>";
   }
   size_t Wikitext::size()
   {
