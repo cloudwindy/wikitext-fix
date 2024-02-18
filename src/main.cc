@@ -16,11 +16,11 @@ int main(int argc, char *argv[])
 {
   CLI::App app;
 
-  string page_name, output_path, login, password;
+  string page_name, output_path, login, password, wiki;
   int old_id = 0;
   bool edit = false, render = false, no_fix = false, silent = false;
   app.add_option("pos", page_name, "Page title name")->required();
-  app.add_flag("-e,--edit", edit, "Edit page");
+  app.add_flag("-e,--edit", edit, "Edit page and suppress output");
   app.add_flag("-n,--no-fix", no_fix, "Disable fixing");
   app.add_option("-o,--output", output_path, "Write to file instead of stdout");
   app.add_option("-O,--oldid", old_id, "Use an old version");
@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
   app.add_flag("-s,--silent", silent, "Silent mode");
   app.add_option("-l,--login", login, "Username for editing");
   app.add_option("-p,--password", password, "Password for editing");
+  app.add_option("--wiki", wiki, "Use custom wiki instead of Chinese Wikipedia (Use with caution!)")->default_str("zh.wikipedia.org");
   app.validate_positionals();
   app.validate_optional_arguments();
 
@@ -38,7 +39,8 @@ int main(int argc, char *argv[])
 
   cerr << "Fetching " << page_name << "..." << flush;
 
-  MWAPI::API api;
+  string base_url("https://" + wiki + "/w/api.php");
+  MWAPI::API api(base_url);
   string bytes = api.get_page_content(page_name);
   cerr << " OK (Received " << bytes.size() << " bytes)" << endl;
   cerr << "Parsing..." << flush;
