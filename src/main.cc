@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
   app.add_flag("-s,--silent", silent, "Silent mode");
   app.add_option("-l,--login", login, "Username for editing");
   app.add_option("-p,--password", password, "Password for editing");
-  app.add_option("--wiki", wiki, "Use custom wiki instead of Chinese Wikipedia (Use with caution!)")->default_str("zh.wikipedia.org");
+  app.add_option("--wiki", wiki, "Use custom wiki instead of Chinese Wikipedia (Use with caution!)")->default_val("zh.wikipedia.org");
   app.validate_positionals();
   app.validate_optional_arguments();
 

@@ -30,6 +30,7 @@ namespace MWAPI
   {
     sess.SetUrl(base_url);
     sess.SetUserAgent(user_agent);
+    // sess.SetVerbose(cpr::Verbose(true));
   }
 
   template <typename T>

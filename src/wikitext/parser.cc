@@ -78,12 +78,26 @@ namespace WikiParser
         wt.erase(0, 1);
         break;
       case ITALIC_STYLE_MARKER:
-        make_text_block();
-        s.style_italic = ~s.style_italic;
+        if (!s.literal)
+        {
+          make_text_block();
+          s.style_italic = ~s.style_italic;
+        }
+        else
+        {
+          buf.append("''");
+        }
         break;
       case BOLD_STYLE_MARKER:
-        make_text_block();
-        s.style_bold = ~s.style_bold;
+        if (!s.literal)
+        {
+          make_text_block();
+          s.style_bold = ~s.style_bold;
+        }
+        else
+        {
+          buf.append("'''");
+        }
         break;
       case TEMPLATE_BEGIN:
         template_begin();
